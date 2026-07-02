@@ -1,0 +1,89 @@
+@prefix kl:     <https://jott2121.github.io/graph-guard/ns#> .
+@prefix schema: <https://schema.org/> .
+@prefix sh:     <http://www.w3.org/ns/shacl#> .
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
+
+#################################################################
+# graph-guard SHACL shapes (Tier B, Task 3)
+#
+# Validate the INSTANCE data produced by graph_guard/rdf_export.py's
+# store_to_graph() -- not the OWL T-Box (ontology/ontology.ttl), which
+# is schema, not data. graph_guard/shacl.py's validate() runs these
+# shapes over an exported graph via pyshacl.
+#
+# Two node shapes, targeting the same instance population from two
+# different angles, because SHACL targeting is one-directional and
+# neither angle alone catches both failure modes:
+#
+#   kl:EntityShape       targets every subject of a schema:name triple
+#                         (sh:targetSubjectsOf schema:name). Catches a
+#                         NAMED node with NO type (S1), and carries the
+#                         functional-predicate max-count-1 checks (S3).
+#
+#   kl:TypedInstanceShape targets every instance of the 11 kl: entity
+#                         classes (sh:targetClass, one per
+#                         graph_guard.schema.ENTITY_TYPES name). Catches
+#                         a TYPED node with NO name (S2) -- a case
+#                         kl:EntityShape structurally cannot see, since
+#                         sh:targetSubjectsOf schema:name only targets
+#                         nodes that already have >=1 schema:name triple.
+#
+# Crucially, this split also means the rdf:Statement reification blocks
+# (edge provenance: rdf:subject/predicate/object + kl:confidence/
+# provenance/span) are NEVER targeted by either shape: they carry no
+# schema:name (so kl:EntityShape skips them) and rdf:Statement is not
+# one of the 11 kl: entity classes (so kl:TypedInstanceShape skips them
+# too). See tests/test_shacl.py::test_reification_statements_not_falsely_flagged.
+#################################################################
+
+kl:EntityShape
+    a sh:NodeShape ;
+    rdfs:label "graph-guard entity instance shape (name-anchored)" ;
+    rdfs:comment "Targets every subject of a schema:name triple, i.e. every real entity node emitted by store_to_graph -- never the rdf:Statement reification blocks (see file header). Requires a declared kl: type (S1) and caps each functional predicate at one value (S3)." ;
+    sh:targetSubjectsOf schema:name ;
+
+    # S1 -- every named entity node must have a declared rdf:type.
+    sh:property [
+        sh:path rdf:type ;
+        sh:minCount 1 ;
+        sh:message "Entity node has no rdf:type (S1: every entity must have a declared kl: type)." ;
+    ] ;
+
+    # S3 -- functional predicates (graph_guard.schema.FUNCTIONAL) are single-valued.
+    sh:property [
+        sh:path kl:has_status ;
+        sh:maxCount 1 ;
+        sh:message "kl:has_status is functional -- a node may have at most one status (S3)." ;
+    ] ;
+    sh:property [
+        sh:path kl:supersedes ;
+        sh:maxCount 1 ;
+        sh:message "kl:supersedes is functional -- a node may have at most one direct successor (S3)." ;
+    ] .
+
+#################################################################
+# S2 -- every typed entity instance must have at least one schema:name
+# string literal. Targeted by class (not by schema:name) so a node
+# that has a type but is MISSING schema:name entirely is still caught
+# -- kl:EntityShape above can't see it (nothing to anchor targeting
+# on), so this shape closes that gap from the type side. One
+# sh:targetClass per graph_guard.schema.ENTITY_TYPES name (kept in
+# lockstep with ontology/ontology.ttl's owl:Class declarations and
+# tests/test_ontology.py's anti-drift check).
+#################################################################
+
+kl:TypedInstanceShape
+    a sh:NodeShape ;
+    rdfs:label "graph-guard typed-instance name check (type-anchored)" ;
+    rdfs:comment "Targets every instance of a kl: entity class (one sh:targetClass per graph_guard.schema.ENTITY_TYPES name) and requires schema:name (S2), independent of kl:EntityShape's name-anchored targeting." ;
+    sh:targetClass kl:Note, kl:Person, kl:Project, kl:Reference, kl:Feedback,
+                    kl:Decision, kl:Claim, kl:Source, kl:Tool, kl:Event, kl:Concept ;
+
+    sh:property [
+        sh:path schema:name ;
+        sh:minCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "Typed kl: instance has no schema:name literal (S2, checked from the type side)." ;
+    ] .
