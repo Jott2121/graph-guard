@@ -1,0 +1,205 @@
+@prefix kl:     <https://jott2121.github.io/graph-guard/ns#> .
+@prefix schema: <https://schema.org/> .
+@prefix skos:   <http://www.w3.org/2004/02/skos/core#> .
+@prefix owl:    <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
+@prefix sh:     <http://www.w3.org/ns/shacl#> .
+
+#################################################################
+# graph-guard OWL T-Box (Tier B, Task 2)
+#
+# This is the class/property schema that Tier B's RDF instance export
+# (graph_guard/rdf_export.py) conforms to. graph_guard/schema.py is the
+# single source of truth for the closed vocabulary -- ENTITY_TYPES (11
+# names) become the owl:Class declarations below, PREDICATES (16 names)
+# become the owl:ObjectProperty declarations, and FUNCTIONAL
+# ({has_status, supersedes}) become owl:FunctionalProperty. Keep this
+# file in lockstep with schema.py; tests/test_ontology.py asserts the
+# mirror holds (anti-drift).
+#
+# Right-sized on purpose (arXiv:2507.09389): a small, mostly-flat OWL
+# T-Box keeps LLM-generated SPARQL/graph queries reliable. We add just
+# enough axioms (subclassing, a couple of ranges, one transitive
+# closure property) to power Task 3 (SHACL shapes), Task 4 (SPARQL +
+# SKOS rollups) and Task 5 (owlrl reasoning demo) -- not a maximal
+# formalization.
+#################################################################
+
+kl: a owl:Ontology ;
+    rdfs:label "graph-guard knowledge-graph ontology" ;
+    rdfs:comment "OWL T-Box for the graph-guard personal knowledge graph: 11 entity types and 16 relations extracted from an Obsidian-style note vault (see graph_guard/schema.py). Tier A treats this vocabulary as closed at extraction time; this file formalizes it as OWL for SHACL validation, SPARQL querying, and owlrl reasoning." .
+
+#################################################################
+# Classes (D3) -- one owl:Class per graph_guard.schema.ENTITY_TYPES name.
+#
+# Subclass mapping (documented per-type, per the Task 2 brief):
+#   Person    -> schema:Person    (direct, unambiguous match)
+#   Project   -> schema:Project   (direct, unambiguous match)
+#   Event     -> schema:Event     (direct, unambiguous match)
+#   Claim     -> schema:Claim     (direct, unambiguous match; schema.org's
+#                Claim is exactly "an assertion" -- fits a KG claim node)
+#   Concept   -> skos:Concept     (direct; SKOS, not schema.org, is the
+#                right vocabulary for a thematic/topic concept)
+#   Note      -> schema:CreativeWork (a free-form authored note is a
+#                creative work; no more specific schema.org type fits)
+#   Reference -> schema:CreativeWork (a cited external work/article)
+#   Source    -> schema:CreativeWork (a cited origin document/artifact;
+#                same rationale as Reference)
+#   Tool      -> schema:SoftwareApplication (the vault's "Tool" nodes are
+#                software tools/CLIs/services, not physical instruments)
+#   Feedback  -> schema:Comment   (a piece of feedback is a commentary
+#                annotation on something else -- schema:Comment fits)
+#   Decision  -> bare owl:Class, no schema.org superclass. A "decision"
+#                (a record of a choice made) doesn't map cleanly onto
+#                schema:Action (which models an act being performed, not
+#                a durable decision-of-record) or any other schema.org
+#                type without stretching the semantics -- left unmapped
+#                rather than force a bad fit.
+#################################################################
+
+kl:Note a owl:Class ;
+    rdfs:label "Note" ;
+    rdfs:subClassOf schema:CreativeWork .
+
+kl:Person a owl:Class ;
+    rdfs:label "Person" ;
+    rdfs:subClassOf schema:Person .
+
+kl:Project a owl:Class ;
+    rdfs:label "Project" ;
+    rdfs:subClassOf schema:Project .
+
+kl:Reference a owl:Class ;
+    rdfs:label "Reference" ;
+    rdfs:subClassOf schema:CreativeWork .
+
+kl:Feedback a owl:Class ;
+    rdfs:label "Feedback" ;
+    rdfs:subClassOf schema:Comment .
+
+kl:Decision a owl:Class ;
+    rdfs:label "Decision" .
+
+kl:Claim a owl:Class ;
+    rdfs:label "Claim" ;
+    rdfs:subClassOf schema:Claim .
+
+kl:Source a owl:Class ;
+    rdfs:label "Source" ;
+    rdfs:subClassOf schema:CreativeWork .
+
+kl:Tool a owl:Class ;
+    rdfs:label "Tool" ;
+    rdfs:subClassOf schema:SoftwareApplication .
+
+kl:Event a owl:Class ;
+    rdfs:label "Event" ;
+    rdfs:subClassOf schema:Event .
+
+kl:Concept a owl:Class ;
+    rdfs:label "Concept" ;
+    rdfs:subClassOf skos:Concept .
+
+#################################################################
+# Object properties (D3) -- one owl:ObjectProperty per
+# graph_guard.schema.PREDICATES name (16 total).
+#################################################################
+
+kl:mentions      a owl:ObjectProperty ; rdfs:label "mentions" .
+kl:about         a owl:ObjectProperty ; rdfs:label "about" .
+kl:is_part_of    a owl:ObjectProperty ; rdfs:label "is part of" .
+kl:blocks        a owl:ObjectProperty ; rdfs:label "blocks" .
+kl:depends_on    a owl:ObjectProperty ; rdfs:label "depends on" .
+kl:decides       a owl:ObjectProperty ; rdfs:label "decides" .
+kl:supports      a owl:ObjectProperty ; rdfs:label "supports" .
+kl:refutes       a owl:ObjectProperty ; rdfs:label "refutes" .
+kl:derived_from  a owl:ObjectProperty ; rdfs:label "derived from" .
+kl:related       a owl:ObjectProperty ; rdfs:label "related" .
+
+#################################################################
+# authored_by / created_by -- object properties with a range constraint
+# (see the Domain/range section below for the rdfs:range rationale).
+#################################################################
+
+kl:authored_by a owl:ObjectProperty ;
+    rdfs:label "authored by" ;
+    rdfs:range kl:Person .
+
+kl:created_by a owl:ObjectProperty ;
+    rdfs:label "created by" ;
+    rdfs:range kl:Person .
+
+#################################################################
+# Functional properties (D6) -- single-valued relations. A conflicting
+# second object for the same subject signals a contradiction; Tier A's
+# guards and Task 3's SHACL max-count-1 shapes rely on this.
+#
+# has_status: mirrors graph_guard.schema.FUNCTIONAL. A node has exactly
+# one current status.
+#################################################################
+
+kl:has_status a owl:ObjectProperty, owl:FunctionalProperty ;
+    rdfs:label "has status" .
+
+#################################################################
+# supersedes / supersedesTransitively -- the DL-safe split.
+#
+# kl:supersedes is Functional (a node is directly superseded by at most
+# one other node -- what Tier A's contradiction guard and Task 3's SHACL
+# max-count-1 shape check) AND must stay single-hop/asserted-only so
+# SPARQL's kl:supersedes+ property path (Task 4) walks the real chain
+# edge-by-edge.
+#
+# It is NOT declared owl:TransitiveProperty. In OWL 2 DL, a property
+# cannot be simultaneously Functional and Transitive -- that combination
+# is only expressible in OWL Full and breaks DL reasoners (a Transitive
+# + Functional property lets a reasoner derive that superseded-by-a-chain
+# collapses distinct individuals, which is exactly the kind of unsound
+# entailment DL forbids). So the transitive closure lives on a SEPARATE
+# super-property, kl:supersedesTransitively, which kl:supersedes feeds
+# via rdfs:subPropertyOf. Task 5's owlrl demo materializes the closure
+# over kl:supersedesTransitively; kl:supersedes itself stays untouched
+# and DL-safe.
+#################################################################
+
+kl:supersedesTransitively a owl:ObjectProperty, owl:TransitiveProperty ;
+    rdfs:label "supersedes (transitive closure)" .
+
+kl:supersedes a owl:ObjectProperty, owl:FunctionalProperty ;
+    rdfs:label "supersedes" ;
+    rdfs:subPropertyOf kl:supersedesTransitively .
+
+#################################################################
+# SKOS bridge (enables Task 4 thematic rollups) -- kl:broader/narrower
+# feed the standard SKOS broader/narrower hierarchy so SPARQL can walk
+# or roll up over skos:broader+ / skos:narrower+ across the whole graph,
+# not just kl-typed edges.
+#################################################################
+
+kl:broader a owl:ObjectProperty ;
+    rdfs:label "broader" ;
+    rdfs:subPropertyOf skos:broader .
+
+kl:narrower a owl:ObjectProperty ;
+    rdfs:label "narrower" ;
+    rdfs:subPropertyOf skos:narrower .
+
+#################################################################
+# Domain/range (right-sized -- arXiv:2507.09389, don't over-formalize).
+#
+# rdfs:domain/rdfs:range carry OWL INFERENCE semantics: a reasoner sees
+# "?x kl:authored_by ?y" and entails "?y a kl:Person" (range) and, if a
+# domain were declared, "?x a <domain-class>" too. That's powerful but
+# dangerous to sprinkle everywhere -- broad domain/range declarations
+# would make Task 5's reasoning demo produce a flood of accidental type
+# entailments unrelated to what we're actually demonstrating (the
+# subclass-inheritance and supersedes-closure reasoning). So we declare
+# rdfs:range ONLY where the target type is truly unambiguous:
+#   - kl:authored_by rdfs:range kl:Person  (declared above)
+#   - kl:created_by  rdfs:range kl:Person  (declared above)
+# No rdfs:domain is declared on any property, and no other property gets
+# a range: e.g. kl:about / kl:mentions / kl:related can point at almost
+# any entity type, so constraining them would be false precision.
+#################################################################
