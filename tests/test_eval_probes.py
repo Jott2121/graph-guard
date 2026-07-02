@@ -37,6 +37,27 @@ def test_multi_hop_high_overlap_discarded():
     assert discarded == 1
 
 
+def test_multi_hop_dedups_per_query_gold_pair():
+    # A links to B via TWO distinct relational predicates -- both pass the low-overlap
+    # filter. This must yield exactly ONE multi_hop probe for the pair, not one per edge.
+    s = TripleStore()
+    s.upsert_node({"id": "project_apollo.md", "type": "Project", "name": "project_apollo",
+                   "note_path": "project_apollo.md"})
+    s.upsert_node({"id": "reference_zenith.md", "type": "Reference", "name": "reference_zenith",
+                   "note_path": "reference_zenith.md"})
+    s.upsert_edge({"src": "project_apollo.md", "predicate": "supersedes", "dst": "reference_zenith.md"})
+    s.upsert_edge({"src": "project_apollo.md", "predicate": "depends_on", "dst": "reference_zenith.md"})
+
+    probes, discarded = multi_hop_probes(s)
+
+    assert discarded == 0  # dedup is not a filter rejection
+    assert len(probes) == 1
+    p = probes[0]
+    assert p.family == "multi_hop"
+    assert p.query == "apollo"
+    assert p.gold_id == "reference_zenith.md"
+
+
 def test_multi_hop_excludes_mentions():
     s = TripleStore()
     s.upsert_node({"id": "project_apollo.md", "type": "Project", "name": "project_apollo",

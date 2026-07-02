@@ -35,10 +35,17 @@ def multi_hop_probes(store, *, max_overlap: int = 1) -> tuple[list[Probe], int]:
     query = clean label of the src note; gold_id = the dst note's id. KEEP the probe only if
     the query and gold clean-label token sets overlap by <= max_overlap (the low-overlap
     filter -- this is what makes it a genuine multi-hop test flat lexical can't win by
-    accident); otherwise discard it. Deterministic: edges are visited in `all_edges()` order,
-    no randomness. Returns (kept_probes, discarded_count)."""
+    accident); otherwise discard it. A multi-hop probe tests a (src, dst) NOTE PAIR, not an
+    edge -- if two real notes are connected by more than one distinct RELATIONAL predicate
+    (e.g. both `supersedes` and `depends_on`), that pair must still yield exactly one probe,
+    so probes are deduplicated on (query, gold_id), keeping the first occurrence in
+    `all_edges()` order. Deterministic: edges are visited in `all_edges()` order, no
+    randomness. Returns (kept_probes, discarded_count) where discarded_count counts ONLY
+    probes rejected by the low-overlap filter -- deduplicated pairs are not counted as
+    discarded."""
     nodes = {node["id"]: node for node in store.all_nodes()}
     kept: list[Probe] = []
+    seen_pairs: set[tuple[str, str]] = set()
     discarded = 0
     for edge in store.all_edges():
         if edge["predicate"] not in RELATIONAL:
@@ -50,9 +57,13 @@ def multi_hop_probes(store, *, max_overlap: int = 1) -> tuple[list[Probe], int]:
         if not dst_node or not dst_node.get("note_path"):
             continue
         query = _clean_label(src_node)
+        pair = (query, edge["dst"])
+        if pair in seen_pairs:
+            continue
         overlap = len(set(_toks(query)) & set(_toks(_clean_label(dst_node))))
         if overlap <= max_overlap:
             kept.append(Probe(family="multi_hop", query=query, gold_id=edge["dst"]))
+            seen_pairs.add(pair)
         else:
             discarded += 1
     return kept, discarded
