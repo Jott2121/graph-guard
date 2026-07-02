@@ -51,6 +51,24 @@ def _predicate_for_heading(heading):
     return "mentions"
 
 
+# inline relation cue substrings (checked before heading context)
+_INLINE_CUES = [("supersed", "supersedes"), ("block", "blocks"),
+                ("depend", "depends_on"), ("part of", "is_part_of"),
+                ("decid", "decides")]
+
+
+def _predicate_for_line(line, heading):
+    """Type an edge by an inline relation cue in the line, else by heading, else 'mentions'.
+    NOTE (Tier A honesty): this is direction-agnostic — 'X superseded by [[Y]]' emits
+    (note, supersedes, Y) regardless of who supersedes whom. Symmetric PPR is unaffected;
+    precise relation DIRECTION is a Tier-3 (LLM extraction) refinement."""
+    low = line.lower()
+    for cue, pred in _INLINE_CUES:
+        if cue in low:
+            return pred
+    return _predicate_for_heading(heading)
+
+
 def extract_note(note_id, text, frontmatter=None):
     """Return (nodes, edges) for one note. frontmatter is parsed from text if not given."""
     parsed_fm, body = parse_frontmatter(text)
@@ -80,16 +98,20 @@ def extract_note(note_id, text, frontmatter=None):
         ensure(status, "Concept")
         edges.append(_edge(note_id, "has_status", status, note_id, "frontmatter"))
 
-    # Tier 2 — body wikilinks, typed by the current heading
+    # Tier 2 — body wikilinks, typed by inline relation cue then heading, else mentions
     heading = None
     for line in body.splitlines():
         hm = _HEADING.match(line)
         if hm:
             heading = hm.group(1)
             continue
-        for tgt in _wikilinks(line):
+        links = _wikilinks(line)
+        if not links:
+            continue
+        pred = _predicate_for_line(line, heading)
+        for tgt in links:
             ensure(tgt)
-            edges.append(_edge(note_id, _predicate_for_heading(heading), tgt, note_id, "wikilink"))
+            edges.append(_edge(note_id, pred, tgt, note_id, "wikilink"))
 
     return list(nodes.values()), edges
 

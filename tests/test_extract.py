@@ -64,3 +64,19 @@ def test_build_graph_keeps_unresolved_targets_as_bare_nodes(tmp_path):
     s = TripleStore()
     build_graph([str(tmp_path)], s)
     assert s.node("NonexistentThing") is not None  # unresolved link stays a bare node
+
+def test_inline_supersedes_phrase():
+    _, edges = extract_note("leo.md", "leo was superseded by [[bow]]")
+    assert any(e["predicate"] == "supersedes" and e["dst"] == "bow" for e in edges)
+
+def test_inline_blocks_phrase():
+    _, edges = extract_note("m.md", "blocked on [[GATE-1]] for now")
+    assert any(e["predicate"] == "blocks" and e["dst"] == "GATE-1" for e in edges)
+
+def test_inline_depends_phrase():
+    _, edges = extract_note("m.md", "this depends on [[Stripe]]")
+    assert any(e["predicate"] == "depends_on" and e["dst"] == "Stripe" for e in edges)
+
+def test_plain_wikilink_still_mentions():
+    _, edges = extract_note("m.md", "see also [[Ghost]]")
+    assert any(e["predicate"] == "mentions" and e["dst"] == "Ghost" for e in edges)
