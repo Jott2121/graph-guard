@@ -9,21 +9,38 @@ Injectable (tfidf_fn, text_for) for deterministic tests; the service factory wir
 tfidf_fn and the graph both operate in NOTE-id space (the factory maps chunk hits -> note hits)."""
 from __future__ import annotations
 
+import os
+
 from rag_guard.retriever import _toks
 
 from graph_guard.ppr import node_specificity, personalized_pagerank
 
 _RRF_K = 60
 
+_PREFIXES = ("project_", "reference_", "feedback_", "user_")
+
+
+def _clean_label(node):
+    name = node.get("name") or node["id"]
+    base = os.path.basename(name).rsplit(".", 1)[0].lower()
+    for p in _PREFIXES:
+        if base.startswith(p):
+            base = base[len(p):]
+            break
+    return base.replace("_", " ").replace("-", " ")
+
 
 def link_entities(query, store, *, limit=8):
-    """Link query content-words to graph nodes by name/id-token overlap; best overlap first."""
+    """Link query content-words to graph nodes by clean-label-token overlap; best overlap
+    first. Links on the node's clean label only (basename minus known prefix minus
+    extension) — never on the full id/path, so path segments and project_/reference_-style
+    prefixes can't spuriously match every query."""
     q = set(_toks(query))
     if not q:
         return []
     scored = []
     for node in store.all_nodes():
-        name_toks = set(_toks(node.get("name", ""))) | set(_toks(node["id"]))
+        name_toks = set(_toks(_clean_label(node)))
         overlap = len(q & name_toks)
         if overlap:
             scored.append((overlap, node["id"]))

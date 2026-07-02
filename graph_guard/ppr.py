@@ -46,10 +46,6 @@ def personalized_pagerank(adj, seeds, *, alpha=0.85, iters=50, tol=1e-9):
 
 
 def node_specificity(adj):
-    """Down-weight high-degree generic hubs (IDF analogue): {node: 1/(1+log(1+degree))}."""
-    deg = {}
-    for u, nbrs in adj.items():
-        deg[u] = deg.get(u, 0) + len(nbrs)
-        for v in nbrs:
-            deg[v] = deg.get(v, 0) + 1
-    return {u: 1.0 / (1.0 + math.log(1.0 + d)) for u, d in deg.items()}
+    """Down-weight high-degree generic hubs (IDF analogue): {node: 1/(1+log(1+degree))}.
+    adjacency() is symmetric, so each node's own row already holds its full degree."""
+    return {u: 1.0 / (1.0 + math.log(1.0 + len(nbrs))) for u, nbrs in adj.items()}

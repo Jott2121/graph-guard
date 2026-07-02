@@ -32,3 +32,13 @@ def test_retrieve_shape():
                         text_for=lambda n: "x")
     for h in gr.retrieve("leo", k=3):
         assert set(h) == {"id", "text", "score"}
+
+def test_link_entities_ignores_path_and_prefix_tokens():
+    from graph_guard.store import TripleStore
+    s = TripleStore()
+    s.upsert_node({"id": "/home/jeff/Documents/Wiki/project_leo_bus.md", "type": "Project",
+                   "name": "project_leo_bus", "note_path": "/home/jeff/Documents/Wiki/project_leo_bus.md"})
+    # a query full of PATH/PREFIX words must NOT link the node (those aren't real content)
+    assert link_entities("documents wiki project", s) == []
+    # a query with the real label DOES link it
+    assert "/home/jeff/Documents/Wiki/project_leo_bus.md" in link_entities("leo bus", s)

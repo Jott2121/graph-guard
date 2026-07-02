@@ -122,6 +122,7 @@ def build_graph(roots, store, *, llm_fn=None, resolve_links=True):
     basename so [[leo]] connects to leo.md (real multi-hop). llm_fn(note_id, text)->[(s,p,o)]
     is optional (Tier 3); invalid predicates are dropped."""
     paths = list(_walk_md(roots))
+    note_paths = set(paths)
     basename_map = {}
     for p in paths:
         basename_map.setdefault(_basename_key(p), p)
@@ -139,7 +140,7 @@ def build_graph(roots, store, *, llm_fn=None, resolve_links=True):
                 if schema.is_valid_predicate(p):
                     edges.append(_edge(s, p, o, path, "llm"))
         if resolve_links:
-            nodes, edges = _resolve(nodes, edges, basename_map)
+            nodes, edges = _resolve(nodes, edges, basename_map, note_paths)
         for n in nodes:
             store.upsert_node(n); counts["nodes"] += 1
         for e in edges:
@@ -151,17 +152,19 @@ def _basename_key(node_id):
     return os.path.basename(node_id).rsplit(".", 1)[0].lower()
 
 
-def _resolve(nodes, edges, basename_map):
-    """Rewrite edge/node targets that match a known note's basename to that note's id, and
-    drop the now-redundant bare target nodes. Unresolved targets stay as bare nodes."""
+def _resolve(nodes, edges, basename_map, note_paths):
+    """Rewrite bare wikilink targets to real note ids by basename; a node that IS a real
+    note keeps its own id (never dropped on a cross-vault basename collision)."""
     def res(nid):
+        if nid in note_paths:
+            return nid
         return basename_map.get(_basename_key(nid), nid)
     new_edges = [{**e, "src": res(e["src"]), "dst": res(e["dst"])} for e in edges]
     keep = {}
     for n in nodes:
         rid = res(n["id"])
         if rid != n["id"]:
-            continue  # this bare node resolves to a real note; the note node carries it
+            continue  # a bare target that resolved to a real note -> drop the duplicate
         keep[n["id"]] = n
     return list(keep.values()), new_edges
 

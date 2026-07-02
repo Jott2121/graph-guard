@@ -80,3 +80,12 @@ def test_inline_depends_phrase():
 def test_plain_wikilink_still_mentions():
     _, edges = extract_note("m.md", "see also [[Ghost]]")
     assert any(e["predicate"] == "mentions" and e["dst"] == "Ghost" for e in edges)
+
+def test_resolve_never_drops_a_real_note_on_basename_collision(tmp_path):
+    (tmp_path / "A").mkdir(); (tmp_path / "B").mkdir()
+    (tmp_path / "A" / "index.md").write_text("alpha")
+    (tmp_path / "B" / "index.md").write_text("bravo")
+    s = TripleStore()
+    build_graph([str(tmp_path)], s)
+    assert s.node(str(tmp_path / "A" / "index.md")) is not None
+    assert s.node(str(tmp_path / "B" / "index.md")) is not None  # neither note is lost

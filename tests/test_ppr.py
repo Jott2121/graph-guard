@@ -25,3 +25,10 @@ def test_node_specificity_downweights_hubs():
            "a": {"hub": 1.0}, "b": {"hub": 1.0}, "c": {"hub": 1.0}}
     spec = node_specificity(adj)
     assert spec["hub"] < spec["a"]
+
+def test_node_specificity_uses_single_degree_count():
+    # symmetric adjacency: A-B-C ; B has degree 2, A/C degree 1
+    adj = {"A": {"B": 1.0}, "B": {"A": 1.0, "C": 1.0}, "C": {"B": 1.0}}
+    spec = node_specificity(adj)
+    import math
+    assert abs(spec["B"] - 1.0 / (1.0 + math.log(1.0 + 2))) < 1e-9  # degree 2, not 4
