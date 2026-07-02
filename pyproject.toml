@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "graph-guard"
+version = "0.1.0"
+description = "Ontology/graph-aware retrieval over a personal knowledge vault: typed knowledge graph + multi-hop PageRank retrieval behind rag-guard's retrieve() seam, with tightened grounding. Tier A = pragmatic working core; Tier B = RDF/OWL/SPARQL enterprise-fidelity layer."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Jeff Otterson" }]
+keywords = ["knowledge-graph", "graphrag", "ontology", "rag", "retrieval", "personal-knowledge-graph"]
+dependencies = ["guarded-rag"]   # Tier A core is stdlib beyond this; Tier B adds rdflib
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+graph = ["networkx>=3"]           # optional: drop-in for the stdlib PageRank
+rdf = ["rdflib>=7"]               # Tier B: RDF/OWL/SHACL export
+
+[tool.setuptools.packages.find]
+include = ["graph_guard*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
