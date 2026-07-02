@@ -94,11 +94,17 @@ def extract_note(note_id, text, frontmatter=None):
     return list(nodes.values()), edges
 
 
-def build_graph(roots, store, *, llm_fn=None):
-    """Walk markdown under roots, extract, upsert into the store. llm_fn(note_id, text)
-    -> [(s,p,o)] is optional (Tier 3); triples with invalid predicates are dropped."""
+def build_graph(roots, store, *, llm_fn=None, resolve_links=True):
+    """Walk markdown under roots, extract, resolve wikilinks to real notes, upsert into the
+    store. Two passes: (1) collect note basenames; (2) extract + resolve edge/node targets by
+    basename so [[leo]] connects to leo.md (real multi-hop). llm_fn(note_id, text)->[(s,p,o)]
+    is optional (Tier 3); invalid predicates are dropped."""
+    paths = list(_walk_md(roots))
+    basename_map = {}
+    for p in paths:
+        basename_map.setdefault(_basename_key(p), p)
     counts = {"notes": 0, "nodes": 0, "edges": 0}
-    for path in _walk_md(roots):
+    for path in paths:
         try:
             text = open(path, encoding="utf-8", errors="ignore").read()
         except OSError:
@@ -110,11 +116,32 @@ def build_graph(roots, store, *, llm_fn=None):
                 s, p, o = triple
                 if schema.is_valid_predicate(p):
                     edges.append(_edge(s, p, o, path, "llm"))
+        if resolve_links:
+            nodes, edges = _resolve(nodes, edges, basename_map)
         for n in nodes:
             store.upsert_node(n); counts["nodes"] += 1
         for e in edges:
             store.upsert_edge(e); counts["edges"] += 1
     return counts
+
+
+def _basename_key(node_id):
+    return os.path.basename(node_id).rsplit(".", 1)[0].lower()
+
+
+def _resolve(nodes, edges, basename_map):
+    """Rewrite edge/node targets that match a known note's basename to that note's id, and
+    drop the now-redundant bare target nodes. Unresolved targets stay as bare nodes."""
+    def res(nid):
+        return basename_map.get(_basename_key(nid), nid)
+    new_edges = [{**e, "src": res(e["src"]), "dst": res(e["dst"])} for e in edges]
+    keep = {}
+    for n in nodes:
+        rid = res(n["id"])
+        if rid != n["id"]:
+            continue  # this bare node resolves to a real note; the note node carries it
+        keep[n["id"]] = n
+    return list(keep.values()), new_edges
 
 
 def _aslist(v):

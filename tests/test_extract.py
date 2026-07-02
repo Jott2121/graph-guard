@@ -45,3 +45,22 @@ def test_llm_fn_triples_filtered(tmp_path):
     build_graph([str(tmp_path)], s, llm_fn=llm)
     preds = {e["predicate"] for e in s.all_edges()}
     assert "supersedes" in preds and "BOGUS" not in preds
+
+def test_build_graph_resolves_wikilinks_to_notes(tmp_path):
+    (tmp_path / "leo.md").write_text("the leo bus")
+    (tmp_path / "bow.md").write_text("## Supersedes\nbow replaces [[leo]]")
+    s = TripleStore()
+    build_graph([str(tmp_path)], s)
+    leo_id = str(tmp_path / "leo.md")
+    bow_id = str(tmp_path / "bow.md")
+    # the [[leo]] wikilink in bow.md must resolve to the real leo.md note id
+    edges = s.all_edges()
+    assert any(e["src"] == bow_id and e["dst"] == leo_id for e in edges)
+    # and no leftover bare "leo" node that duplicates the real note
+    assert s.node("leo") is None
+
+def test_build_graph_keeps_unresolved_targets_as_bare_nodes(tmp_path):
+    (tmp_path / "a.md").write_text("see [[NonexistentThing]]")
+    s = TripleStore()
+    build_graph([str(tmp_path)], s)
+    assert s.node("NonexistentThing") is not None  # unresolved link stays a bare node
