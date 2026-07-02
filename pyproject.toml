@@ -19,7 +19,7 @@ graph-guard-build = "graph_guard.build_cli:main"
 [project.optional-dependencies]
 dev = ["pytest>=8"]
 graph = ["networkx>=3"]           # optional: drop-in for the stdlib PageRank
-rdf = ["rdflib>=7"]               # Tier B: RDF/OWL/SHACL export
+rdf = ["rdflib>=7", "pyshacl", "owlrl"]  # Tier B: RDF/OWL/SHACL export + reasoning
 
 [tool.setuptools.packages.find]
 include = ["graph_guard*"]
