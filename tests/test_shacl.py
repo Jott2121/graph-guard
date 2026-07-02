@@ -1,8 +1,11 @@
-from rdflib import RDF, Graph, Literal
+from rdflib import RDF, Graph, Literal, Namespace
 
 from graph_guard.rdf_export import KL, SCHEMA, node_iri, store_to_graph
+from graph_guard.schema import ENTITY_TYPES, FUNCTIONAL
 from graph_guard.shacl import load_shapes, validate
 from graph_guard.store import TripleStore
+
+SH = Namespace("http://www.w3.org/ns/shacl#")
 
 
 def _valid_store():
@@ -77,3 +80,34 @@ def test_double_has_status_fails():
 def test_reification_statements_not_falsely_flagged():
     conforms, results_graph, results_text = validate(store_to_graph(_valid_store()))
     assert conforms is True
+
+
+def test_typed_instance_shape_targets_every_entity_type():
+    """Anti-drift pin (ontology/shapes.ttl header comment): kl:TypedInstanceShape's
+    sh:targetClass list must cover every name in graph_guard.schema.ENTITY_TYPES.
+    Without this, adding a 12th entity type to schema.py could silently leave
+    shapes.ttl out of date -- a new typed-but-unnamed node would wrongly pass S2
+    validation because no sh:targetClass would ever target it."""
+    g = load_shapes()
+    for t in ENTITY_TYPES:
+        assert (KL.TypedInstanceShape, SH.targetClass, KL[t]) in g, (
+            f"schema.ENTITY_TYPES has {t!r} but kl:TypedInstanceShape has no "
+            f"matching sh:targetClass in ontology/shapes.ttl"
+        )
+
+
+def test_entity_shape_caps_every_functional_predicate_at_one():
+    """Anti-drift pin (ontology/shapes.ttl header comment): kl:EntityShape must carry
+    an S3 property shape (sh:maxCount 1) for every predicate in
+    graph_guard.schema.FUNCTIONAL. Without this, adding a new functional predicate to
+    schema.py could silently leave shapes.ttl out of date -- a node with two values for
+    the new predicate would wrongly pass validation."""
+    g = load_shapes()
+    for f in FUNCTIONAL:
+        assert any(
+            (blank, SH.path, KL[f]) in g and (blank, SH.maxCount, Literal(1)) in g
+            for blank in g.objects(KL.EntityShape, SH.property)
+        ), (
+            f"schema.FUNCTIONAL has {f!r} but kl:EntityShape has no sh:property shape "
+            f"with sh:path kl:{f} and sh:maxCount 1 in ontology/shapes.ttl"
+        )

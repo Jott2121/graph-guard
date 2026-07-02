@@ -96,14 +96,27 @@ def nodes_of_type(graph: Graph, type_name: str) -> list[str]:
     """Type-filtered retrieval: the `schema:name` of every node asserted
     `a kl:<type_name>`.
 
-    The type is injected as a full IRI (`<...>`, built via
-    `rdf_export.type_iri`) rather than concatenated into a `kl:Foo` QName,
+    The type is injected via rdflib's own N3 term serialization
+    (`type_iri(type_name).n3()`), not hand-wrapped as `<{type_iri(type_name)}>`,
     so the query stays well-formed and injection-safe regardless of what
-    `type_name` contains.
+    `type_name` contains. rdflib's `URIRef.n3()` refuses to serialize a term
+    containing any of the characters an IRI reference can never legally
+    contain (`<`, `>`, `"`, space, `{`, `}`, `|`, `\\`, `^`, backtick) --
+    which is exactly the character set needed to close a SPARQL `<...>` IRI
+    literal and splice in additional query text -- raising instead of
+    emitting anything. That raise is caught below and treated the same as
+    "no such type": a hostile `type_name` can therefore never smuggle extra
+    query clauses in, and this function never raises or returns spurious
+    rows for it -- it simply matches nothing (see
+    tests/test_fuseki.py::test_nodes_of_type_is_injection_safe).
     """
+    try:
+        type_term = type_iri(type_name).n3()
+    except Exception:
+        return []
     query = PREFIXES + f"""
 SELECT ?name WHERE {{
-    ?n a <{type_iri(type_name)}> .
+    ?n a {type_term} .
     ?n schema:name ?name .
 }}
 """

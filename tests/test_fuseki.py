@@ -64,6 +64,17 @@ def test_nodes_of_type():
     assert "Gina" not in result
 
 
+def test_nodes_of_type_is_injection_safe():
+    """A hostile type_name that tries to break out of the `<...>` IRI
+    literal and splice in a UNION clause must not raise and must not
+    return spurious rows -- it should simply match nothing, exactly like
+    any other type_name with no matching kl: instances."""
+    g = store_to_graph(_typed_store())
+    hostile = "Project> . } UNION { ?n a <x> . ?n schema:name ?name "
+    result = nodes_of_type(g, hostile)
+    assert result == []
+
+
 def test_broader_rollup():
     g = store_to_graph(_concept_store())
     assert set(broader_rollup(g, "X")) == {"Y", "Z"}
@@ -148,8 +159,8 @@ def test_live_fuseki_roundtrip():  # pragma: no cover -- exercised only against 
     remote = {row["x"] for row in rows}
     in_memory = set(supersedes_chain(store_to_graph(store), "A"))
 
-    # remote rows are full IRIs; in_memory results are bare ids -- compare
-    # by suffix so this test doesn't need to know fuseki.py's internal id
-    # <-> IRI mapping.
-    remote_ids = {iri.rsplit("/n/", 1)[-1] for iri in remote}
+    # remote rows are full IRIs; in_memory results are bare ids -- recover
+    # the bare id via the canonical inverse of node_iri (fuseki.py's own
+    # _iri_to_id) rather than re-deriving the id <-> IRI mapping here.
+    remote_ids = {_iri_to_id(iri) for iri in remote}
     assert remote_ids == in_memory == {"B", "C", "D"}

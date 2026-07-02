@@ -70,8 +70,10 @@ kl:EntityShape
 # -- kl:EntityShape above can't see it (nothing to anchor targeting
 # on), so this shape closes that gap from the type side. One
 # sh:targetClass per graph_guard.schema.ENTITY_TYPES name (kept in
-# lockstep with ontology/ontology.ttl's owl:Class declarations and
-# tests/test_ontology.py's anti-drift check).
+# lockstep with ontology/ontology.ttl's owl:Class declarations via
+# tests/test_ontology.py's anti-drift check, and with this shape's own
+# sh:targetClass list via
+# tests/test_shacl.py::test_typed_instance_shape_targets_every_entity_type).
 #################################################################
 
 kl:TypedInstanceShape
