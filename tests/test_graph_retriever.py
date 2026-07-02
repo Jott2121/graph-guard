@@ -33,6 +33,18 @@ def test_retrieve_shape():
     for h in gr.retrieve("leo", k=3):
         assert set(h) == {"id", "text", "score"}
 
+def test_injected_adjacency_changes_ranking():
+    s = _store()
+    s.upsert_node({"id": "other.md", "type": "Project", "name": "other project", "note_path": "other.md"})
+    def tfidf(q, k): return []  # no lexical hits -> ranking is driven purely by the graph
+    def text_for(nid): return {"bow.md": "bow", "leo.md": "leo", "other.md": "other"}.get(nid)
+    # custom adjacency connects the seed (leo.md) to other.md instead of bow.md
+    custom_adj = {"leo.md": {"other.md": 1.0}, "other.md": {"leo.md": 1.0}}
+    gr = GraphRetriever(s, tfidf_fn=tfidf, text_for=text_for, adjacency_fn=lambda: custom_adj)
+    ids = [h["id"] for h in gr.retrieve("what superseded the leo bus", k=5)]
+    assert "other.md" in ids   # reachable only via the injected adjacency
+    assert "bow.md" not in ids  # reachable only via the store's default adjacency, not the injected one
+
 def test_link_entities_ignores_path_and_prefix_tokens():
     from graph_guard.store import TripleStore
     s = TripleStore()

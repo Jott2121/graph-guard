@@ -53,11 +53,14 @@ def _rrf(ranked_ids):
 
 
 class GraphRetriever:
-    def __init__(self, store, *, tfidf_fn, text_for, k_lexical=10):
+    def __init__(self, store, *, tfidf_fn, text_for, k_lexical=10, adjacency_fn=None):
         self._store = store
         self._tfidf = tfidf_fn          # (query, k) -> [{id,text,score}] in NOTE-id space
         self._text_for = text_for       # note_id -> str|None
         self._k_lexical = k_lexical
+        # () -> {node: {neighbor: weight}}; default = store's own adjacency (unchanged
+        # behavior). Gate D injects the owlrl-reasoned adjacency here for the reasoned arm.
+        self._adjacency_fn = adjacency_fn if adjacency_fn is not None else self._store.adjacency
 
     def retrieve(self, query, k=5):
         lexical = self._tfidf(query, self._k_lexical) or []
@@ -65,7 +68,7 @@ class GraphRetriever:
         if not seeds:
             return lexical[:k]          # hybrid: no anchor -> pure lexical
 
-        adj = self._store.adjacency()
+        adj = self._adjacency_fn()
         pr = personalized_pagerank(adj, seeds)
         spec = node_specificity(adj)
         note_scores = {}
