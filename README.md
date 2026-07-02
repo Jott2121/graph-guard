@@ -62,12 +62,25 @@ PYTHONPATH=. graph-guard-build          # build the KG over your vault (rag-guar
 
 ```python
 from graph_guard import service
-hits = service.query("what superseded the leo bus", k=5)   # graph-aware, hybrid-routed
+
+# retrieval only (hybrid-routed graph + lexical):
+hits = service.query("what superseded the leo bus", k=5)
+
+# graph-GUARDED answer (structural refuse + entity-overlap grounding actually run here):
+from rag_guard.providers import FakeProvider   # swap for a real provider
+out = service.answer("what superseded the leo bus", FakeProvider("..."), k=5)
+# {'answer', 'refused', 'grounded', 'support', 'sources'}
 ```
 
-**Measured on a real ~750-note vault:** a 686-node / 1,772-edge typed graph built in ~1.4s
-(deterministic tiers, no model calls). The `eval/` multi-hop case shows the graph surfacing a note
-that flat TF-IDF misses because it shares no query words but sits one typed hop away.
+The guards run in `service.answer()`, not inside `retrieve()` — `retrieve()` is retrieval-only so
+it drops cleanly behind rag-guard's seam; `answer()` composes the structural refuse gate +
+entity-overlap grounding around a provider.
+
+**Build cost (measured on a real ~750-note vault):** a 686-node / 1,772-edge typed graph built in
+~1.4s (deterministic tiers, no model calls). Note the `eval/` case is a *controlled* 2-node
+demonstration that the multi-hop **mechanism** works (the graph returns a note flat TF-IDF misses
+because it shares no query words but sits one typed hop away) — it proves the mechanism, not a
+retrieval-quality lift number on the full vault (unquantified; see limits).
 
 ## Where this sits in the landscape (prior art)
 
