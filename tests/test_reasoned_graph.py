@@ -63,10 +63,47 @@ def test_reification_not_edges():
     assert set(reasoned["C"]) == {"A", "B"}
 
 
-def test_dangling_edge_endpoint_excluded():
-    """An edge naming a src/dst id that was never registered via upsert_node (so it's
-    absent from store.all_nodes()) must not surface as an adjacency edge -- confirms
-    the id-membership guard, not just IRI shape, decides real-note-ness."""
+def test_asserted_edge_confidence_preserved():
+    """The reasoned arm (A3) must equal the graph arm (A2) PLUS reasoning-revealed edges --
+    it may never re-weight an asserted edge. An asserted supersedes edge at confidence 0.5
+    stays 0.5: not flattened to 1.0, and not inflated by the entailed supersedesTransitively
+    edge that owlrl derives on the SAME A-B pair."""
+    s = TripleStore()
+    s.upsert_node({"id": "A", "type": "Project", "name": "Project A"})
+    s.upsert_node({"id": "B", "type": "Project", "name": "Project B"})
+    s.upsert_edge({"src": "A", "predicate": "supersedes", "dst": "B", "confidence": 0.5})
+
+    raw = s.adjacency()
+    reasoned = reasoned_adjacency(s)
+
+    assert raw["A"]["B"] == 0.5
+    assert reasoned["A"]["B"] == raw["A"]["B"] == 0.5
+    assert reasoned["B"]["A"] == raw["B"]["A"] == 0.5
+
+
+def test_new_entailed_edge_weight_is_one():
+    """A genuinely-new entailed edge carries a uniform weight of exactly 1.0, independent of
+    the confidence of the asserted edges it was derived from."""
+    s = TripleStore()
+    for node_id in ("A", "B", "C"):
+        s.upsert_node({"id": node_id, "type": "Project", "name": f"Project {node_id}"})
+    s.upsert_edge({"src": "A", "predicate": "supersedes", "dst": "B", "confidence": 0.5})
+    s.upsert_edge({"src": "B", "predicate": "supersedes", "dst": "C", "confidence": 0.5})
+
+    reasoned = reasoned_adjacency(s)
+
+    assert reasoned["A"]["B"] == 0.5  # asserted weight preserved
+    # A-C is derivable ONLY by the transitive closure -> new entailed edge, weight 1.0
+    # (not 0.5 inherited from the chain, not 2.0 from a double add).
+    assert reasoned["A"]["C"] == 1.0
+    assert reasoned["C"]["A"] == 1.0
+
+
+def test_non_note_relational_endpoints_add_no_entailed_edge():
+    """A relational edge whose src/dst id was never registered via upsert_node (absent from
+    store.all_nodes()) must not spawn any NEW entailed edge -- the id-membership guard, not
+    just IRI shape, decides real-note-ness. reasoning adds nothing here, so the reasoned
+    adjacency equals the raw graph-arm adjacency untouched."""
     s = TripleStore()
     s.upsert_node({"id": "A", "type": "Project", "name": "Project A"})
     # "ghost"/"ghost2" are never upserted as nodes -- store.all_nodes() never includes them.
@@ -75,9 +112,9 @@ def test_dangling_edge_endpoint_excluded():
 
     reasoned = reasoned_adjacency(s)
 
-    assert reasoned.get("A", {}) == {}
-    assert "ghost" not in reasoned
-    assert "ghost2" not in reasoned
+    # Reasoning entails no new note<->note edge (both dangling endpoints fail the note-id
+    # guard), so A3 == A2 exactly -- no spurious edge invented for a non-note endpoint.
+    assert reasoned == s.adjacency()
 
 
 def test_type_cohort_off_by_default_on_when_asked():
@@ -93,6 +130,41 @@ def test_type_cohort_off_by_default_on_when_asked():
     on = reasoned_adjacency(s, type_cohort=True)
     assert "P2" in on["P1"]
     assert "P1" in on["P2"]
+
+
+def test_type_cohort_ignores_universal_owl_thing_type():
+    """type_cohort must group only by the kl: entity classes, NOT by owlrl's universal
+    types (owl:Thing / rdfs:Resource) that every materialized note gets. Two notes of
+    DIFFERENT kl: entity types share only those universals, so even with type_cohort=True
+    they must stay unconnected -- otherwise the toggle would link every note to every
+    other note via the owl:Thing cohort and be meaningless."""
+    s = TripleStore()
+    s.upsert_node({"id": "P1", "type": "Project", "name": "Project One"})
+    s.upsert_node({"id": "N1", "type": "Note", "name": "Note One"})
+
+    on = reasoned_adjacency(s, type_cohort=True)
+
+    assert "N1" not in on.get("P1", {})
+    assert "P1" not in on.get("N1", {})
+
+
+def test_type_cohort_excludes_entailed_type_on_non_note():
+    """A range axiom (kl:authored_by rdfs:range kl:Person) can entail a kl:Person type on an
+    endpoint that was never registered as a note (a dangling authored_by target). type_cohort
+    must group only REAL notes: that phantom-typed non-note is never pulled into a cohort, so
+    it never gets a cohort edge to a real same-typed note."""
+    s = TripleStore()
+    s.upsert_node({"id": "P1", "type": "Person", "name": "Person One"})
+    s.upsert_node({"id": "P2", "type": "Person", "name": "Person Two"})
+    # 'ghost' is never upserted; owlrl entails `ghost a kl:Person` via authored_by's range.
+    s.upsert_edge({"src": "P1", "predicate": "authored_by", "dst": "ghost"})
+
+    on = reasoned_adjacency(s, type_cohort=True)
+
+    assert "P2" in on["P1"]  # real kl:Person cohort edge between the two registered Persons
+    # the phantom-typed non-note is never cohorted to a real note.
+    assert "P2" not in on.get("ghost", {})
+    assert "ghost" not in on.get("P2", {})
 
 
 def test_shape_matches_adjacency():
