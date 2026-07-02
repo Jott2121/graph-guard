@@ -13,6 +13,9 @@ authors = [{ name = "Jeff Otterson" }]
 keywords = ["knowledge-graph", "graphrag", "ontology", "rag", "retrieval", "personal-knowledge-graph"]
 dependencies = ["guarded-rag"]   # Tier A core is stdlib beyond this; Tier B adds rdflib
 
+[project.scripts]
+graph-guard-build = "graph_guard.build_cli:main"
+
 [project.optional-dependencies]
 dev = ["pytest>=8"]
 graph = ["networkx>=3"]           # optional: drop-in for the stdlib PageRank
