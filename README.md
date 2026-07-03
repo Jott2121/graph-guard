@@ -89,7 +89,7 @@ For development:
 
 ```bash
 pip install -e ".[dev,rdf]"    # [rdf] adds rdflib/pyshacl/owlrl for Tier B
-python -m pytest -q            # 137 tests, 97% coverage, Python 3.11-3.13 (see .github/workflows/ci.yml)
+python -m pytest -q            # 137 passing (+1 opt-in Fuseki skip), ~97% coverage, Python 3.11-3.13 (see .github/workflows/ci.yml)
 ```
 
 ```python
