@@ -32,3 +32,8 @@ graph_guard = ["ontology_data/*.ttl"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["graph_guard"]
+# relative_files lets the coverage-comment action resolve paths from a checkout
+relative_files = true
