@@ -1,0 +1,46 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: pip install -e ".[dev,rdf]" pytest-cov
+      - name: Run tests + coverage gate
+        run: python -m pytest -q --cov=graph_guard --cov-report=term-missing --cov-fail-under=90
+
+  coverage:
+    # Coverage badge + per-PR comment (self-contained, no third-party service).
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev,rdf]" coverage
+      - name: Measure coverage
+        run: |
+          coverage run -m pytest
+          coverage report
+      - name: Coverage badge + PR comment
+        uses: py-cov-action/python-coverage-comment-action@cc6cde2639ed103404ce0da9e75114ae9561e691 # v3
+        with:
+          GITHUB_TOKEN: ${{ github.token }}
