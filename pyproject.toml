@@ -11,7 +11,7 @@ requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [{ name = "Jeff Otterson" }]
 keywords = ["knowledge-graph", "graphrag", "ontology", "rag", "retrieval", "personal-knowledge-graph"]
-dependencies = ["guarded-rag"]   # Tier A core is stdlib beyond this; Tier B adds rdflib
+dependencies = ["guarded-rag @ git+https://github.com/Jott2121/rag-guard.git"]   # Tier A core is stdlib beyond this; Tier B adds rdflib; not on PyPI, pulled from GitHub
 
 [project.scripts]
 graph-guard-build = "graph_guard.build_cli:main"
@@ -23,6 +23,12 @@ rdf = ["rdflib>=7", "pyshacl", "owlrl"]  # Tier B: RDF/OWL/SHACL export + reason
 
 [tool.setuptools.packages.find]
 include = ["graph_guard*"]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.package-data]
+graph_guard = ["ontology_data/*.ttl"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

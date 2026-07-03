@@ -11,7 +11,8 @@ data with the OWL T-Box (`graph_guard.ontology.load_ontology`) and runs an OWL 2
 Why the ontology must be in the mix: the T-Box axioms that drive entailment --
 `kl:supersedes rdfs:subPropertyOf kl:supersedesTransitively` +
 `kl:supersedesTransitively a owl:TransitiveProperty`, `kl:broader rdfs:subPropertyOf
-skos:broader`, and `kl:Project rdfs:subClassOf schema:Project` -- live in `ontology/ontology.ttl`,
+skos:broader`, and `kl:Project rdfs:subClassOf schema:Project` -- live in
+`graph_guard/ontology_data/ontology.ttl`,
 not in the instance data. Reasoning over the data alone (`with_ontology=False`) has no axioms to
 apply and entails nothing beyond what's already asserted. owlrl never fetches external
 vocabularies over the network either way; `schema:Project`/`skos:Concept` etc. are only "known"

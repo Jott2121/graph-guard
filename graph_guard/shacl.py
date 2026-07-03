@@ -1,30 +1,36 @@
 """SHACL validation of exported RDF instance data (Tier B, Task 3).
 
-`ontology/shapes.ttl` constrains the INSTANCE graphs produced by
-`graph_guard.rdf_export.store_to_graph` (kl: entity type required, schema:name
-required, functional predicates single-valued). This module loads those
-shapes and runs `pyshacl.validate` over a data graph -- no validation logic
-lives here, the shapes file is the source of truth.
+`graph_guard/ontology_data/shapes.ttl` constrains the INSTANCE graphs produced
+by `graph_guard.rdf_export.store_to_graph` (kl: entity type required,
+schema:name required, functional predicates single-valued). This module loads
+those shapes and runs `pyshacl.validate` over a data graph -- no validation
+logic lives here, the shapes file is the source of truth. Loaded via
+`importlib.resources` (not a bare filesystem path) so it works both from an
+editable checkout and from an installed wheel.
 """
 from __future__ import annotations
 
-from pathlib import Path
+from importlib import resources
 
 import pyshacl
 from rdflib import Graph
 
-SHAPES_PATH = Path(__file__).resolve().parent.parent / "ontology" / "shapes.ttl"
+
+def _shapes_path():
+    """A `Traversable` pointing at the packaged shapes.ttl."""
+    return resources.files("graph_guard").joinpath("ontology_data/shapes.ttl")
 
 
 def load_shapes() -> Graph:
-    """Parse `ontology/shapes.ttl` and return it as an rdflib Graph."""
+    """Parse the packaged `ontology_data/shapes.ttl` and return it as an rdflib Graph."""
     g = Graph()
-    g.parse(SHAPES_PATH, format="turtle")
+    with resources.as_file(_shapes_path()) as p:
+        g.parse(p, format="turtle")
     return g
 
 
 def validate(data_graph: Graph) -> tuple[bool, Graph, str]:
-    """Validate `data_graph` against `ontology/shapes.ttl`.
+    """Validate `data_graph` against `graph_guard/ontology_data/shapes.ttl`.
 
     Thin wrapper over `pyshacl.validate`. Args passed deliberately, and why:
       - shacl_graph=load_shapes()  -- our shapes, not pyshacl's own default.

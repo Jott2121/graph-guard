@@ -30,7 +30,7 @@ runs `SELECT ?x WHERE { <start> kl:supersedes+ ?x . }` — the SPARQL 1.1 proper
 `graph_guard/rdf_export.py::store_to_graph`. This walks **only** asserted `kl:supersedes` edges;
 no other predicate can leak in. Separately, `graph_guard/reasoning.py::materialize(data_graph)`
 runs `owlrl.DeductiveClosure(owlrl.OWLRL_Semantics)` over the instance data plus the OWL T-Box
-(`ontology/ontology.ttl`), **entailing** `kl:supersedesTransitively(start, x)` directly as a new
+(`graph_guard/ontology_data/ontology.ttl`), **entailing** `kl:supersedesTransitively(start, x)` directly as a new
 triple for every `x` in the closure — via `kl:supersedes rdfs:subPropertyOf
 kl:supersedesTransitively` + `kl:supersedesTransitively a owl:TransitiveProperty` (rules
 prp-spo1 + prp-trp). The output is a **set** — membership is binary, and the property path (or the
@@ -86,7 +86,7 @@ has no notion that the question named one specific predicate; SPARQL does.
 | **Precision / exactness** | Ranked relevance score; degrades gracefully, no hard cutoff. In this run it ranked a true positive (`project_v1.md`) *below* two false positives. | Exact set membership. The property path only follows the named predicate — no false positives, no ranking to get wrong. |
 | **Explainability** | A score is a number, not a proof. "Why is this ranked #3?" requires re-deriving the PPR diffusion — no audit trail. | The query *is* the explanation: `kl:supersedes+` from `start` to `x`, or the specific asserted edges owlrl chained. Directly auditable. |
 | **Entailment (derive unasserted facts)** | None — PPR only sees the adjacency that's already there; it cannot derive a fact the extractor didn't assert. | Yes — `materialize()` derives `kl:supersedesTransitively`, `schema:Project` subclass typing, and `skos:broader` from `kl:broader`, none of which `rdf_export.py` ever asserts directly (`graph_guard/reasoning.py`, `tests/test_reasoning.py`). |
-| **Validation** | None built in. | SHACL (`ontology/shapes.ttl` + `graph_guard/shacl.py::validate`) checks required `name`, valid `type`, functional-predicate max-count-1 — schema conformance as a first-class, queryable artifact. |
+| **Validation** | None built in. | SHACL (`graph_guard/ontology_data/shapes.ttl` + `graph_guard/shacl.py::validate`) checks required `name`, valid `type`, functional-predicate max-count-1 — schema conformance as a first-class, queryable artifact. |
 | **Interoperability** | Bespoke: SQLite schema + a stdlib adjacency dict. Not portable to another team's tooling without a custom adapter. | Standards-based: RDF/Turtle, OWL 2, SPARQL 1.1, SKOS, schema.org. Loads into any conformant triplestore — AWS Neptune's RDF/SPARQL engine included (see below). |
 | **Cost / dependencies** | stdlib only (`math`, `sqlite3`); `networkx` is an optional drop-in, never required. | `rdflib`, `owlrl`, `pyshacl` (the `[rdf]` extra); the live path (opt-in, `graph_guard/fuseki.py::FusekiClient`) additionally needs a running Apache Jena Fuseki server — Java. |
 | **Latency at personal-KG scale** | 0.173 ms for `GraphRetriever.retrieve` on this 6-node fixture (measured in-process, single run — illustrative only, not a benchmark). | 32.9 ms for the property-path query, 30.9 ms for `materialize()` on the same fixture — both dominated by one-time rdflib SPARQL query-plan compilation / owlrl setup, not the graph's size (a repeated warm call to the same compiled query drops to ~0.8 ms; see "Honest limits"). |

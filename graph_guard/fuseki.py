@@ -128,7 +128,7 @@ def broader_rollup(graph: Graph, start_id: str) -> list[str]:
     from `start_id` via one-or-more `kl:broader` hops (`kl:broader+`).
 
     NOTE: the ontology declares `kl:broader rdfs:subPropertyOf
-    skos:broader` (ontology/ontology.ttl). That means the SAME rollup is
+    skos:broader` (graph_guard/ontology_data/ontology.ttl). That means the SAME rollup is
     also answerable with `skos:broader+` -- but only AFTER an owlrl
     reasoner (Task 5) has materialized the subproperty entailment; the raw
     exported instance data only asserts `kl:broader` directly. This helper
