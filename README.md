@@ -1,17 +1,30 @@
 # graph-guard
 
 ![ci](https://github.com/Jott2121/graph-guard/actions/workflows/ci.yml/badge.svg)
+![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
+![tests](https://img.shields.io/badge/tests-137-brightgreen.svg)
+![coverage](https://img.shields.io/badge/coverage-97%25-brightgreen.svg)
 
-**Ontology/graph-aware retrieval over a personal knowledge vault — built in two tiers plus a
-real-vault measurement of what each one buys you.** Turns a folder of markdown (Obsidian
-`[[wikilinks]]` + YAML frontmatter) into a typed knowledge graph, retrieves with multi-hop
-**Personalized PageRank fused with lexical TF-IDF** behind
-[rag-guard](https://github.com/Jott2121/rag-guard)'s `retrieve()` seam, and — as a Tier-B fidelity
-layer — exports the same graph as a formal **RDF/OWL/SHACL/SPARQL** ontology with owlrl reasoning.
+**A knowledge graph that makes RAG answer the hard questions — the ones where the
+answer is spread across several documents — plus a measured, honest account of when
+the heavyweight semantic stack is worth its cost and when it isn't.**
 
-The point isn't "graph vs. vectors" or "how much OWL can we bolt on." It's **judgment**: knowing
-*when* the heavyweight semantic stack earns its cost and when it doesn't — shown with numbers
-measured on a real, live 517-note vault, not a toy benchmark.
+Most RAG retrieval matches on *similarity*: it finds text that sounds like your
+question. That works for a direct lookup and breaks the moment the answer spans
+several documents, because no single passage looks like the whole question — and
+those connected questions are usually the ones worth asking. graph-guard puts a
+typed **knowledge graph** behind the retriever so it can follow the *connections
+between facts* (multi-hop), then measures exactly what that buys, on a real 517-note
+vault, not a toy benchmark:
+
+> **Multi-hop questions: +14% hit@10, +26% MRR. Zero regression on simple lookups.**
+
+Then it does the honest part. On top of the graph it ships the full enterprise
+semantic stack — RDF, OWL, SHACL, SPARQL, an owlrl reasoner — and measures whether
+that heavier machinery lifts retrieval further. **It doesn't**: the reasoned graph
+ties the plain graph. So the ontology earns its keep on fidelity, validation, and
+standards interop (SPARQL, AWS Neptune) — *not* on retrieval. Knowing which layer to
+switch on for the problem in front of you is the whole point.
 
 ## The measured result
 
