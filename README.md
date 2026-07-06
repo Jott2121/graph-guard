@@ -26,6 +26,18 @@ ties the plain graph. So the ontology earns its keep on fidelity, validation, an
 standards interop (SPARQL, AWS Neptune) — *not* on retrieval. Knowing which layer to
 switch on for the problem in front of you is the whole point.
 
+## Try it (no API key, no model)
+
+```bash
+pip install -e .
+python examples/run_sample.py
+```
+
+Runs the whole pipeline over 7 tiny notes and shows the graph surfacing the *owner* of a
+bug that lexical search scores **0.00** — because her note shares no words with the query,
+but the graph reaches her in two hops. Deterministic, no model call. See
+[`examples/`](examples/) for the walkthrough.
+
 ## The measured result
 
 Three retrieval arms — flat TF-IDF, the Tier-A typed graph, and the Tier-B owlrl-reasoned graph —
