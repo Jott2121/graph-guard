@@ -194,12 +194,20 @@ def test_lift_survives_one_sided_none_metric():
     assert result["multi_hop"]["hit@1"] == 0.0
 
 
-# ── KNOWN EQUIVALENT MUTANTS (documented, not overlooked) ────────────────────────────────────
-# After these tests, `python -m mutmut run` leaves exactly 2 survivors:
-#   evaluate #37 / #39 : `ranks_by_family.get(fam, [])` -> `.get(fam, None)` / default dropped.
-# These are EQUIVALENT mutants: `ranks_by_family` is initialized as {fam: [] for fam in _FAMILIES}
-# and then read back with `for fam in _FAMILIES`, so the key is always present and the default
-# argument is unreachable. Mutating an unreachable default changes no observable behavior, so no
-# test can distinguish it. They are left alive on purpose; forcing them green would require a fake
-# (non-failing) test, which defeats the purpose of mutation testing. Killable mutants killed: 7/7.
+# ── NO SURVIVING MUTANTS ─────────────────────────────────────────────────────────────────────
+# `python -m mutmut run` now leaves zero survivors: 108 mutants, 108 killed.
+#
+# It used to leave two. `evaluate` read `ranks_by_family.get(fam, [])`, and mutants #37/#39
+# altered that `[]` default. They were correctly identified as EQUIVALENT — `ranks_by_family` is
+# initialized as {fam: [] for fam in _FAMILIES} and read back over the same tuple, so the key is
+# always present and the default is unreachable — and then left alive on the reasoning that no
+# test could distinguish them.
+#
+# That reasoning was sound and the remedy was wrong. An unreachable default is dead code, and it
+# quietly tells the next reader that a family can be missing when none ever can. Deleting it
+# removes the equivalence class entirely, which beats documenting it forever: the survivors did
+# not get excused, they stopped existing. `evaluate` now indexes directly.
+#
+# The general rule, learned the same way in oracle-gate: if nothing can test it, ask why it is
+# there. Untestable code is usually a design problem announcing itself, not a testing problem.
 
