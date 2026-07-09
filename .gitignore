@@ -7,3 +7,7 @@ __pycache__/
 *.sqlite
 *.sqlite3
 data/
+# mutation-testing artifacts (mutmut's working copy + cache)
+mutants/
+.mutmut-cache
+html/
