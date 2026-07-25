@@ -60,7 +60,10 @@ def evaluate(arm_fn, probes, *, k: int = 10) -> dict:
 
     result = {"overall": _score_group(overall_ranks, k)}
     for fam in _FAMILIES:
-        result[fam] = _score_group(ranks_by_family.get(fam, []), k)
+        # Direct indexing, not `.get(fam, [])`: every family key is created above, so the
+        # default was unreachable — dead code that no test could ever kill, and therefore an
+        # equivalent mutant. Deleting it beats exempting it.
+        result[fam] = _score_group(ranks_by_family[fam], k)
     return result
 
 

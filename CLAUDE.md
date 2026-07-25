@@ -1,0 +1,10 @@
+# graph-guard
+
+A typed knowledge graph behind a RAG retriever so multi-hop questions (answers spread across several documents) can be answered via graph connections instead of pure similarity, plus a measured account of when the heavier RDF/OWL/SHACL/SPARQL semantic stack is actually worth its cost.
+
+- **Status:** active, public repo with CI, 137 tests / 97% coverage
+- **Entry points:** `graph_guard/` (the package), `examples/run_sample.py` (no API key needed), `eval/`, `docs/`
+- **Run/test:** `pip install -e . && python examples/run_sample.py`
+- **KG cache staleness:** the KG stores a `corpus_fingerprint` in its `meta` table and rebuilds when it moves. Do **not** reintroduce an `edges == 0` freshness test — one stale edge blocked rebuild permanently, and because `GraphRetriever` falls back to lexical when a query links to no anchor, a 2-node graph served plausible results silently. Call `service.graph_health(retriever)` before attributing any result to "the graph".
+- **Headline result is NEGATIVE and that is deliberate:** on 82 real sessions over a 586-note corpus the graph did **not** beat plain chunk-level TF-IDF (flat 0.6904 vs ensemble+PPR 0.6537 recall@20, n.s.). The old +14%/+26% headline came from **structure-derived probes** (queries synthesized from the graph's own edges = circular) and is kept only for contrast. Honest eval = `eval/real_sessions_ab.py`, which runs a **positive control (verbatim-text recovery) and a shuffled-gold negative control** and ABORTS if either fails — every methodology error here was a harness bug, so never report a number from it with `--skip-controls`. Do not restore the circular eval as the headline, and do not describe it as an 'upper bound' (a circular benchmark bounds nothing).
+- **Constraints:** the reasoned/ontology layer ties the plain graph on retrieval — it earns its keep on fidelity/validation/standards interop, not retrieval lift

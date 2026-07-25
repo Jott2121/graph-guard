@@ -28,6 +28,10 @@ CREATE TABLE IF NOT EXISTS edges (
 );
 CREATE INDEX IF NOT EXISTS idx_edges_src ON edges(src, predicate);
 CREATE INDEX IF NOT EXISTS idx_edges_dst ON edges(dst, predicate);
+CREATE TABLE IF NOT EXISTS meta (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
 """
 
 
@@ -83,6 +87,20 @@ class TripleStore:
             adj[r["src"]][r["dst"]] = adj[r["src"]].get(r["dst"], 0.0) + w
             adj[r["dst"]][r["src"]] = adj[r["dst"]].get(r["src"], 0.0) + w
         return adj
+
+    def get_meta(self, key):
+        r = self.conn.execute("SELECT value FROM meta WHERE key=?", (key,)).fetchone()
+        return r["value"] if r else None
+
+    def set_meta(self, key, value):
+        self.conn.execute("INSERT OR REPLACE INTO meta(key,value) VALUES (?,?)", (key, value))
+        self.conn.commit()
+
+    def clear(self):
+        """Drop all nodes and edges, keeping the file (and any open connection) valid."""
+        self.conn.execute("DELETE FROM edges")
+        self.conn.execute("DELETE FROM nodes")
+        self.conn.commit()
 
     def counts(self):
         n = self.conn.execute("SELECT COUNT(*) FROM nodes").fetchone()[0]
