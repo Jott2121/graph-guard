@@ -31,6 +31,7 @@ import datetime as dt
 import glob
 import json
 import os
+import random
 import sys
 from math import comb
 
@@ -132,12 +133,70 @@ def sign_test(baseline, arm):
     return wins, losses, min(p, 1.0)
 
 
+def run_controls(retrieve_fn, sessions, depth, *, seed=0):
+    """Two pre-registered controls. Every methodology error in this repo's history was a
+    HARNESS bug, not an analysis bug, so a number is not reportable until the harness has
+    demonstrated it can detect a signal and can lose one.
+
+    POSITIVE: query a note with its own verbatim text. If the harness cannot recover the
+    note it just quoted, retrieval or the id->path mapping is broken.
+    NEGATIVE: shuffle the gold sets across sessions. Recall must collapse. If a shuffled
+    label scores near the real one, the metric is measuring note popularity or a path-
+    matching artifact rather than query relevance -- which is exactly how a plausible
+    number survives a broken harness.
+    """
+    real = [len(set(retrieve_fn(q)) & gold) / len(gold) for q, gold in sessions]
+    real_mean = sum(real) / len(real)
+
+    rng = random.Random(seed)
+    golds = [gold for _, gold in sessions]
+    shuffled = golds[:]
+    rng.shuffle(shuffled)
+    # A permutation can map a session onto its own gold; that is fine and left alone,
+    # since forcing a derangement would bias the control away from chance.
+    control = [len(set(retrieve_fn(q)) & gold) / len(gold)
+               for (q, _), gold in zip(sessions, shuffled)]
+    control_mean = sum(control) / len(control)
+
+    hits = 0
+    probes = 0
+    for _, gold in sessions[:25]:
+        for path in sorted(gold)[:1]:
+            try:
+                text = open(path, encoding="utf-8", errors="ignore").read()[:400]
+            except OSError:
+                continue
+            if len(text.split()) < 8:
+                continue
+            probes += 1
+            hits += 1 if path in set(retrieve_fn(text)) else 0
+
+    print("CONTROLS (flat arm)")
+    print(f"  positive  verbatim-text queries recovering their own note : "
+          f"{hits}/{probes}" + (f" ({hits/probes:.0%})" if probes else ""))
+    print(f"  negative  real gold      recall@{depth} : {real_mean:.4f}")
+    print(f"            shuffled gold  recall@{depth} : {control_mean:.4f}"
+          f"   (ratio {control_mean/real_mean:.2f})" if real_mean else "")
+    ok = True
+    if probes and hits / probes < 0.8:
+        print("  FAIL: harness cannot recover notes it quoted verbatim.", file=sys.stderr)
+        ok = False
+    if real_mean and control_mean / real_mean > 0.5:
+        print("  FAIL: shuffled gold scores too close to real gold; the metric is not "
+              "measuring query relevance.", file=sys.stderr)
+        ok = False
+    return ok
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--roots", required=True, help="colon-separated corpus roots")
     ap.add_argument("--transcripts", required=True, help="dir of Claude Code *.jsonl sessions")
     ap.add_argument("--depth", type=int, default=20)
     ap.add_argument("--max-sessions", type=int, default=None)
+    ap.add_argument("--seed", type=int, default=0, help="seed for the shuffled-gold control")
+    ap.add_argument("--skip-controls", action="store_true",
+                    help="not recommended: the controls are what make the numbers meaningful")
     args = ap.parse_args(argv)
 
     roots = [os.path.expanduser(r) for r in args.roots.split(":")]
@@ -215,6 +274,14 @@ def main(argv=None):
             results[name].append(len(got & gold) / len(gold))
 
     print(f"queries linking to >=1 graph anchor: {anchored}/{len(sessions)}\n")
+
+    if not args.skip_controls:
+        ok = run_controls(arms["flat"], sessions, depth, seed=args.seed)
+        if not ok:
+            print("\nABORT: controls failed. The arm numbers below would be meaningless.",
+                  file=sys.stderr)
+            return 3
+        print()
     print(f"{'arm':<16}{'recall@%d' % depth:>12}{'vs ensemble':>28}")
     for name in arms:
         mean = sum(results[name]) / len(results[name])

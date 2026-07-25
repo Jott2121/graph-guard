@@ -18,9 +18,10 @@ between facts* (multi-hop).
 
 Then it does the honest part, and the honest part is a negative result:
 
-> **On a real 586-note corpus, scored against what 82 real working sessions actually
-> opened, the graph did not beat plain chunk-level TF-IDF. Nor did the ontology on top
-> of it. The lexical baseline won.**
+> **On a real 586-note corpus, scored against what 83 real working sessions actually
+> opened — with a positive control and a shuffled-gold negative control that both pass —
+> the graph did not beat plain chunk-level TF-IDF. Nor did the ontology on top of it.
+> The lexical baseline won.**
 
 That is not the result this repo originally reported, and the difference is the whole
 lesson. The original **+14% hit@10 / +26% MRR** headline was measured on *structure-derived
@@ -61,15 +62,29 @@ everything the session needed while the query is only its opening prompt. A meth
 surfaces the rest of a spread-out answer should win under this label. That is what makes a
 loss here meaningful.
 
-586-note corpus, 913 nodes / 2,101 edges, 82 labelled sessions, 80 of which link to at least
+**Two pre-registered controls run first, and the eval aborts if either fails.** Every
+methodology error in this repo's history was a *harness* bug, not an analysis bug, so a
+number is not reportable until the harness has shown it can both detect a signal and lose
+one:
+
+| control | requires | measured |
+|---|---|---|
+| **positive** — query a note with its own verbatim text | recovers that note | **25/25 (100%)** |
+| **negative** — shuffle gold sets across sessions | recall collapses | **0.2499 vs 0.6731 real (ratio 0.37)** |
+
+The shuffled floor is worth reading directly: roughly **a quarter of "recall" here is base
+rate**, not relevance — a handful of notes are opened in many sessions. Judge every arm below
+against 0.25, not against 0.
+
+586-note corpus, 913 nodes / 2,101 edges, 83 labelled sessions, 81 of which link to at least
 one graph anchor. recall@20, paired sign test against the no-graph ensemble:
 
 | arm | recall@20 | vs ensemble |
 |---|---|---|
-| **flat** (chunk-level TF-IDF) | **0.6904** | better 13, worse 9, p=0.52 |
-| note-level TF-IDF | 0.6318 | better 2, worse 9, p=0.065 |
-| ensemble (note + chunk, no graph) | 0.6648 | baseline |
-| **ensemble + PageRank** | 0.6537 | better 2, worse 5, p=0.45 |
+| **flat** (chunk-level TF-IDF) | **0.6731** | better 11, worse 10, p=1.00 |
+| note-level TF-IDF | 0.6363 | better 3, worse 10, p=0.092 |
+| ensemble (note + chunk, no graph) | 0.6598 | baseline |
+| **ensemble + PageRank** | 0.6437 | better 1, worse 5, p=0.22 |
 
 **Nothing beat plain chunk-level TF-IDF, and adding the graph made the ensemble slightly
 worse.** No difference here is significant at n=82, so the defensible claim is not "the graph
@@ -109,9 +124,13 @@ simple-lookup probes (k=10). Method in
 | Graph doesn't hurt simple lookups | within ~1 point of flat on every metric |
 | owlrl reasoning adds ~zero retrieval lift | hit@10 identical to raw graph; MRR +0.0008 |
 
-**Read these as an upper bound produced by a favourable benchmark, not as evidence of
-real-world lift.** The probes are generated from the graph's own edges, so the graph is being
-asked to walk connections the probe generator just showed it. The contrast with the session
+**These numbers are invalid by construction and are retained only to show what a
+structure-derived probe reports.** The probes are generated from the graph's own edges, so
+the graph is asked to walk connections the probe generator just showed it. Note the wording:
+they are *not* an "upper bound" — a circular benchmark has no bounding property in either
+direction, since it measures the structure it was derived from and can overstate or
+understate arbitrarily. Calling it a bound would be an invalid measurement wearing
+valid-sounding language, which is the exact failure this section exists to document. The contrast with the session
 eval above is the most useful thing in this repo: *the same system, measured two ways, gives
 opposite answers, and only one of the two used labels the system didn't author.*
 
