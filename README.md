@@ -18,10 +18,10 @@
 | graph\_guard/reasoned\_graph.py  |       46 |        0 |    100% |           |
 | graph\_guard/reasoning.py        |       13 |        0 |    100% |           |
 | graph\_guard/schema.py           |       19 |        0 |    100% |           |
-| graph\_guard/service.py          |       48 |        2 |     96% |     40-41 |
+| graph\_guard/service.py          |       65 |        4 |     94% |48-49, 77-78 |
 | graph\_guard/shacl.py            |       14 |        0 |    100% |           |
-| graph\_guard/store.py            |       50 |        0 |    100% |           |
-| **TOTAL**                        |  **667** |   **21** | **97%** |           |
+| graph\_guard/store.py            |       60 |        0 |    100% |           |
+| **TOTAL**                        |  **694** |   **23** | **97%** |           |
 
 
 ## Setup coverage badge
