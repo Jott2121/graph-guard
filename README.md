@@ -14,17 +14,28 @@ question. That works for a direct lookup and breaks the moment the answer spans
 several documents, because no single passage looks like the whole question — and
 those connected questions are usually the ones worth asking. graph-guard puts a
 typed **knowledge graph** behind the retriever so it can follow the *connections
-between facts* (multi-hop), then measures exactly what that buys, on a real 517-note
-vault, not a toy benchmark:
+between facts* (multi-hop).
 
-> **Multi-hop questions: +14% hit@10, +26% MRR. Zero regression on simple lookups.**
+Then it does the honest part, and the honest part is a negative result:
 
-Then it does the honest part. On top of the graph it ships the full enterprise
-semantic stack — RDF, OWL, SHACL, SPARQL, an owlrl reasoner — and measures whether
-that heavier machinery lifts retrieval further. **It doesn't**: the reasoned graph
-ties the plain graph. So the ontology earns its keep on fidelity, validation, and
-standards interop (SPARQL, AWS Neptune) — *not* on retrieval. Knowing which layer to
-switch on for the problem in front of you is the whole point.
+> **On a real 586-note corpus, scored against what 82 real working sessions actually
+> opened, the graph did not beat plain chunk-level TF-IDF. Nor did the ontology on top
+> of it. The lexical baseline won.**
+
+That is not the result this repo originally reported, and the difference is the whole
+lesson. The original **+14% hit@10 / +26% MRR** headline was measured on *structure-derived
+probes* — queries synthesized from the graph's own edges, with the linked note as the gold
+answer. A graph will always win that benchmark, because the benchmark is built from the
+mechanism under test. It is circular, and it said nothing about the questions a human
+actually asks. Those numbers, and the method, are preserved below and in
+[`docs/EVAL-real-vault-lift.md`](docs/EVAL-real-vault-lift.md) — not deleted, because the
+comparison between the two evals is more useful than either one alone.
+
+**What it costs to find this out:** a cached graph silently degraded to 2 nodes (see
+[the staleness bug](#the-cache-bug-that-hid-all-of-this)) and, because the retriever falls
+back to lexical when a query links to no anchor, a full day of measurements was attributed
+to a graph that was not running. *A component that fails silently on a stale cache gets
+measured as working.* `service.graph_health()` exists so you can assert otherwise.
 
 ## Try it (no API key, no model)
 
@@ -40,24 +51,74 @@ but the graph reaches her in two hops. Deterministic, no model call. See
 
 ## The measured result
 
-Three retrieval arms — flat TF-IDF, the Tier-A typed graph, and the Tier-B owlrl-reasoned graph —
-run over graph-guard's actual knowledge graph (517 notes / 807 nodes / 1,814 edges), scored on 159
-structure-derived multi-hop probes and 517 simple-lookup probes (k=10). Full method and honest
-limits in [`docs/EVAL-real-vault-lift.md`](docs/EVAL-real-vault-lift.md); raw numbers in
+### Against real sessions (the eval that matters)
+
+[`eval/real_sessions_ab.py`](eval/real_sessions_ab.py) takes its labels from **outside** the
+system under test. For each Claude Code session it uses the first substantive user prompt as
+the query, and the notes that session went on to **open** as the gold set. Weak, but
+independent — and biased *toward* breadth-seeking methods, since the gold set spans
+everything the session needed while the query is only its opening prompt. A method that
+surfaces the rest of a spread-out answer should win under this label. That is what makes a
+loss here meaningful.
+
+586-note corpus, 913 nodes / 2,101 edges, 82 labelled sessions, 80 of which link to at least
+one graph anchor. recall@20, paired sign test against the no-graph ensemble:
+
+| arm | recall@20 | vs ensemble |
+|---|---|---|
+| **flat** (chunk-level TF-IDF) | **0.6904** | better 13, worse 9, p=0.52 |
+| note-level TF-IDF | 0.6318 | better 2, worse 9, p=0.065 |
+| ensemble (note + chunk, no graph) | 0.6648 | baseline |
+| **ensemble + PageRank** | 0.6537 | better 2, worse 5, p=0.45 |
+
+**Nothing beat plain chunk-level TF-IDF, and adding the graph made the ensemble slightly
+worse.** No difference here is significant at n=82, so the defensible claim is not "the graph
+hurts" — it is that **on this corpus, with these labels, the graph produced no measurable
+benefit**, while costing a build step, a cache, and a second retrieval system in the path.
+
+Reproduce on your own notes:
+
+```bash
+python eval/real_sessions_ab.py --roots ~/notes --transcripts ~/.claude/projects/<project>
+```
+
+Output is aggregate-only — no prompts, no filenames, no session ids.
+
+### The cache bug that hid all of this
+
+`build_retriever` used to treat the cached graph as fresh whenever it had any edges at all
+(`edges == 0` was the only staleness test). One stale edge blocked rebuild permanently. A
+cache holding **2 nodes and 1 edge** against a ~590-note corpus therefore persisted
+indefinitely — and since `GraphRetriever` falls back to pure lexical whenever a query links
+to no anchor (a deliberate hybrid behaviour), it kept answering plausibly and reported
+nothing wrong. Fixed: the graph now records the corpus fingerprint it was built from, and
+`service.graph_health(retriever)` returns `{nodes, edges, empty}` so a caller can assert a
+graph is actually loaded before attributing anything to it. The eval aborts if it is empty.
+
+### Against structure-derived probes (the original, circular eval — kept for contrast)
+
+Three arms — flat TF-IDF, the Tier-A typed graph, the Tier-B owlrl-reasoned graph — over 517
+notes / 807 nodes / 1,814 edges, scored on 159 **structure-derived** multi-hop probes and 517
+simple-lookup probes (k=10). Method in
+[`docs/EVAL-real-vault-lift.md`](docs/EVAL-real-vault-lift.md), raw numbers in
 [`eval/results.json`](eval/results.json).
 
 | Finding | Result |
 |---|---|
-| **Graph beats flat on multi-hop** | hit@10 0.3145 → 0.3585 (**+14% relative**); MRR 0.1303 → 0.1647 (**+26% relative**) |
-| **Graph doesn't hurt simple lookups** | within ~1 point of flat on every metric — the hybrid fallback holds |
-| **owlrl reasoning adds ~zero retrieval lift** | hit@10 identical to raw graph (0.3585 both); MRR +0.0008 |
+| Graph beats flat on multi-hop | hit@10 0.3145 → 0.3585 (+14% rel); MRR 0.1303 → 0.1647 (+26% rel) |
+| Graph doesn't hurt simple lookups | within ~1 point of flat on every metric |
+| owlrl reasoning adds ~zero retrieval lift | hit@10 identical to raw graph; MRR +0.0008 |
 
-**The takeaway:** the ontology earns its cost on fidelity, SHACL validation, entailment, and
-standards interop (SPARQL, and by extension AWS Neptune) — **not** on retrieval. That's not a
-weakness of Tier B, it's the honest shape of what formal semantics is *for*. See
-[`docs/TRADEOFFS.md`](docs/TRADEOFFS.md) (graph-vs-flat, how much ontology) and
-[`docs/SPARQL-vs-PPR.md`](docs/SPARQL-vs-PPR.md) (the exactness-vs-fuzziness mechanism behind
-that third finding) for the full architect reasoning.
+**Read these as an upper bound produced by a favourable benchmark, not as evidence of
+real-world lift.** The probes are generated from the graph's own edges, so the graph is being
+asked to walk connections the probe generator just showed it. The contrast with the session
+eval above is the most useful thing in this repo: *the same system, measured two ways, gives
+opposite answers, and only one of the two used labels the system didn't author.*
+
+The Tier-B conclusion survives both evals and is unchanged: the ontology earns its cost on
+fidelity, SHACL validation, entailment, and standards interop (SPARQL, and by extension AWS
+Neptune) — **not** on retrieval. See [`docs/TRADEOFFS.md`](docs/TRADEOFFS.md) and
+[`docs/SPARQL-vs-PPR.md`](docs/SPARQL-vs-PPR.md).
 
 ## The three layers (all shipped)
 
@@ -155,11 +216,17 @@ Efficacy" ([arXiv:2507.09389](https://arxiv.org/abs/2507.09389)). Standards: sch
 
 ## Honest limits
 
-- The eval's structure-derived probes measure multi-hop **link-recovery and no-harm**, not organic
-  question relevance — a probe's query is a note's own label, not something a user actually typed.
+- **The structure-derived probes are circular** and should not be read as real-world lift: a
+  probe's query is a note's own label and its gold answer is a note linked to it, so the graph is
+  scored on walking edges the probe generator handed it. The session eval exists because of this.
+- **The session eval is weakly labelled too**, in the other direction: gold is every corpus note a
+  session opened, while the query is only its first prompt, so it credits methods for surfacing
+  things the user needed later. It also runs retrieval over *today's* corpus, not the corpus as it
+  stood during that session. Both biases favour the graph, which is why the null result stands.
 - **Single-gold** assumption; real queries can have several relevant notes.
-- A **personal N-of-1 vault** (the author's own ~517 notes) — these results may not generalize to
-  a different corpus, domain, or scale.
+- A **personal N-of-1 vault** (the author's own ~586 notes) — these results may not generalize to
+  a different corpus, domain, or scale. **n=82 sessions is small**: no arm difference in the
+  session eval reaches significance, so the honest claim is "no measurable benefit", not "harmful".
 - The numbers are a **snapshot** (2026-07-02): the vault is live and evolves, so a re-run will
   drift even though the measurement itself is deterministic for a fixed snapshot.
 - **owlrl is OWL 2 RL** — a decidable, rule-based fragment of OWL 2, not full OWL-DL reasoning.
