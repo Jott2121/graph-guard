@@ -3,6 +3,7 @@ path id space so they fuse cleanly), and expose graph-aware query(). rag-guard's
 the lexical leg; graph_retriever fuses PPR over the KG."""
 from __future__ import annotations
 
+import hashlib
 import os
 
 from rag_guard import config
@@ -28,11 +29,47 @@ def reset():
     _SINGLETON = None
 
 
+KG_FINGERPRINT_KEY = "corpus_fingerprint"
+
+
+def corpus_fingerprint(roots) -> str:
+    """Hash of the corpus's markdown paths, mtimes and sizes.
+
+    The KG has to know which corpus it was built from. The previous test -- rebuild only
+    when `edges == 0` -- meant a single stale edge blocked the rebuild permanently, and
+    because GraphRetriever falls back to lexical whenever a query links to no anchor, the
+    result was a 2-node graph serving plausible lexical results and reporting nothing
+    wrong. Silent degradation on a stale cache gets measured as working.
+    """
+    h = hashlib.sha256()
+    for path in sorted(_walk_md(roots)):
+        try:
+            st = os.stat(path)
+        except OSError:
+            continue
+        h.update(f"{path}:{int(st.st_mtime)}:{st.st_size};".encode())
+    return h.hexdigest()
+
+
+def graph_health(retriever) -> dict:
+    """Is a graph actually loaded? Ask before attributing anything to 'the graph'.
+
+    `empty` means the graph arm cannot contribute: with no edges there is nothing for
+    PageRank to traverse, so every query is served by the lexical leg alone."""
+    counts = retriever._store.counts()
+    return {**counts, "empty": counts["edges"] == 0}
+
+
 def build_retriever(roots=None, *, kg_path=None, llm_fn=None, rebuild=False):
     roots = roots or config.default_roots()
     store = TripleStore(kg_path or ":memory:")
-    if rebuild or store.counts()["edges"] == 0:
+    current = corpus_fingerprint(roots)
+    if rebuild or store.get_meta(KG_FINGERPRINT_KEY) != current:
+        # Clear first: build_graph upserts, so without this a rename or deletion leaves
+        # orphaned nodes from the previous corpus in place forever.
+        store.clear()
         build_graph(roots, store, llm_fn=llm_fn)
+        store.set_meta(KG_FINGERPRINT_KEY, current)
     docs, text_map = [], {}
     for path in _walk_md(roots):
         try:
