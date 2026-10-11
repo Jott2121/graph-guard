@@ -13,7 +13,7 @@ def _valid_store():
     s = TripleStore()
     s.upsert_node({"id": "A", "type": "Project", "name": "Project A"})
     s.upsert_node({"id": "B", "type": "Project", "name": "Project B"})
-    s.upsert_node({"id": "C", "type": "Person", "name": "Gina"})
+    s.upsert_node({"id": "C", "type": "Person", "name": "Priya"})
     s.upsert_edge({"src": "A", "predicate": "supersedes", "dst": "B",
                     "note_path": "project_a.md", "confidence": 0.75,
                     "extractor": "frontmatter"})

@@ -2,9 +2,9 @@ from graph_guard.store import TripleStore
 
 def test_upsert_and_get_node():
     s = TripleStore()
-    s.upsert_node({"id": "Gina", "type": "Person", "name": "Gina"})
-    n = s.node("Gina")
-    assert n["type"] == "Person" and n["name"] == "Gina" and n["attrs"] == {}
+    s.upsert_node({"id": "Priya", "type": "Person", "name": "Priya"})
+    n = s.node("Priya")
+    assert n["type"] == "Person" and n["name"] == "Priya" and n["attrs"] == {}
 
 def test_upsert_node_replaces():
     s = TripleStore()

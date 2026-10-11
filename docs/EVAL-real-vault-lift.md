@@ -137,8 +137,8 @@ to add for those other reasons, but it should not be sold as a retrieval upgrade
   the hybrid fallback, not a tax on easy queries.
 - **owlrl reasoning** → does not pay for itself in retrieval on this vault. It pays for
   fidelity, SHACL-checked data quality, and standards-based interop — the case
-  `docs/SPARQL-vs-PPR.md` makes and the Neptune/enterprise-triplestore context it's built to
-  rehearse. Route reasoning to where "prove it" matters, not to where "rank it" is the ask.
+  `docs/SPARQL-vs-PPR.md` makes for managed enterprise triplestores (Neptune, Jena, any
+  SPARQL 1.1 endpoint). Route reasoning to where "prove it" matters, not to where "rank it" is the ask.
 
 ## Honest limits
 

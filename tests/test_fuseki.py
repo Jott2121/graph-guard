@@ -33,7 +33,7 @@ def _typed_store():
     s = TripleStore()
     s.upsert_node({"id": "P1", "type": "Project", "name": "Project One"})
     s.upsert_node({"id": "P2", "type": "Project", "name": "Project Two"})
-    s.upsert_node({"id": "H1", "type": "Person", "name": "Gina"})
+    s.upsert_node({"id": "H1", "type": "Person", "name": "Priya"})
     return s
 
 
@@ -61,7 +61,7 @@ def test_nodes_of_type():
     g = store_to_graph(_typed_store())
     result = nodes_of_type(g, "Project")
     assert set(result) == {"Project One", "Project Two"}
-    assert "Gina" not in result
+    assert "Priya" not in result
 
 
 def test_nodes_of_type_is_injection_safe():
