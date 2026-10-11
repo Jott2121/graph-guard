@@ -123,6 +123,31 @@ def test_explicit_path_mode_scans_only_that_file(tmp_path):
     assert _scan(repo, "bad.md").returncode == 1
 
 
+def test_symlink_target_is_scanned(tmp_path):
+    repo = _repo(tmp_path, {"a.md": "clean\n"})
+    (repo / "link").symlink_to(f"docs/{PLANTED}-notes.md")
+    subprocess.run(["git", "add", "link"], cwd=repo, check=True)
+    proc = _scan(repo)
+    assert proc.returncode == 1
+    assert "link:1: blocked term" in proc.stdout
+
+
+def test_binary_file_is_scanned(tmp_path):
+    repo = _repo(tmp_path, {"a.md": "clean\n"})
+    (repo / "blob.bin").write_bytes(b"\x00\x01\xff " + PLANTED.encode() + b" \x00")
+    subprocess.run(["git", "add", "blob.bin"], cwd=repo, check=True)
+    assert _scan(repo).returncode == 1
+
+
+def test_missing_or_unreadable_file_fails_closed(tmp_path):
+    repo = _repo(tmp_path, {"a.md": "clean\n", "gone.md": "clean\n"})
+    (repo / "gone.md").unlink()
+    proc = _scan(repo)
+    assert proc.returncode == 2
+    assert "gone.md" in proc.stderr
+    assert _scan(repo, "nope.md").returncode == 2
+
+
 def test_missing_hash_file_fails_closed(tmp_path):
     repo = _repo(tmp_path, {"a.md": "clean\n"})
     (repo / ".github" / "blocked-terms.sha256").unlink()

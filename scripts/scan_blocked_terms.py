@@ -110,14 +110,12 @@ def scan_text(text: str, digests: set[str], markers: re.Pattern[str] | None = No
 
 
 def scan_file(path: Path, digests: set[str], markers: re.Pattern[str] | None = None) -> list[tuple[int, str]]:
-    if path.is_symlink() or not path.exists():
-        return []
+    # A symlink is checked by its stored target, which is what git commits.
+    # Binary files are scanned too: words embedded in the bytes still count.
     try:
-        data = path.read_bytes()
+        data = os.readlink(path).encode() if path.is_symlink() else path.read_bytes()
     except OSError as exc:
         raise ScanError(f"cannot read {path}: {exc}") from exc
-    if b"\0" in data[:8192]:
-        return []
     return scan_text(data.decode("utf-8", errors="replace"), digests, markers)
 
 
