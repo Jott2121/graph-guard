@@ -1,0 +1,15 @@
+---
+description: Testing rules — applies when editing tests or code under test
+globs: "tests/**,**/test_*.py,**/*_test.py,pyproject.toml,pytest.ini,setup.cfg"
+alwaysApply: false
+---
+# Tests
+
+- Write the failing test first, show it failing, then make it pass. Paste both runs in the PR.
+- Test behavior, not implementation. Exercise real entry points.
+- Every guard/gate gets a deny-path test: error, timeout, malformed input, empty input.
+- Never add `skip`, `xfail`, or loosen assertions to get green. Never lower `--cov-fail-under` (the floor in CI is 90) or mutation thresholds.
+- The published badges say 137 tests and 97% coverage. Do not edit them to get green.
+- The only default skip is the opt-in Fuseki live test (`GRAPH_GUARD_FUSEKI_LIVE`). Do not add another.
+- Tests must run offline with no API keys. Live Fuseki is opt-in and deselected by default.
+- No network, no wall-clock sleeps, no order dependence. Use fixtures with fixed seeds.

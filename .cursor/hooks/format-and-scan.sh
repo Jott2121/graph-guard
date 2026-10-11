@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# afterFileEdit (notification-only): format the edited Python file and warn on employer-data / secret patterns.
+# afterFileEdit (notification-only): format the edited Python file if ruff is installed,
+# and warn on employer-data / secret patterns.
 # It can't block the edit; CI's no-employer-data job is the real gate.
+# ruff is not a CI dependency in this repo; the format step is a no-op when ruff is absent.
 set -uo pipefail
 f="$(python3 -c 'import sys,json; print(json.load(sys.stdin).get("file_path",""))')"
 [ -f "$f" ] || exit 0

@@ -1,0 +1,13 @@
+---
+description: Core working principles for this repo — receipts, honest benchmarks, fail-closed, no employer data
+alwaysApply: true
+---
+# Core principles (always on)
+
+- Personal work only. Never introduce Lockheed Martin data, names, acronyms, documents, or realistic HR records. Synthetic data from a seeded, committed generator only. If unsure where content came from, stop and ask.
+- Every claim needs a receipt: a committed command that reproduces it, or a committed artifact. No adjectives without numbers.
+- The headline result is the real-session negative (see AGENTS.md). Report nulls and regressions as prominently as wins.
+- Decision paths fail closed (deny on error, timeout, or missing input). Never weaken a guard, threshold, or coverage floor to get green.
+- Done = tests pass and the output is pasted in the PR. New behavior ships with a test that fails without it.
+- No irreversible actions: no force-push, history rewrite, release tagging, package publishing, or posting. Open a PR.
+- Commands and traps are in AGENTS.md. Run them; don't guess.

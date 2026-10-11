@@ -1,0 +1,16 @@
+---
+description: Use when writing or changing README numbers, eval/benchmark code, experiment results, writeups, or PR descriptions with metrics
+globs: "README.md,docs/**,eval/**,runs/**,reports/**,WRITEUP.md,CHANGELOG.md,scripts/check_receipts.py"
+alwaysApply: false
+---
+# Benchmarks and public claims
+
+- Every published number links to a command, a commit, a raw artifact, and a date. Where the raw run cannot be committed (private vault), say so and do not invent a substitute artifact.
+- Include the baseline and the null. If a result is not significant, say so in the headline, not a footnote.
+- State limits up front (n, single corpus, label source, date).
+- Don't round in your favor. Show the figure the artifact actually stores.
+- Never edit raw run outputs. Supersede with a new run and a note.
+- If a README number changes, the PR must show before → after and the command or artifact that produced it. Update `scripts/check_receipts.py` in that same PR.
+- The real-session eval (`eval/real_sessions_ab.py`) is the headline. The structure-derived probes (`eval/real_vault_lift.py`, `eval/results.json`) are circular contrast only. Do not call them an upper bound.
+- Never report a session-eval number produced with `--skip-controls`. The harness aborts when a control fails; that abort is part of the measurement.
+- An older note cited flat 0.6904 vs ensemble+PPR 0.6537. The README table (0.6731 vs 0.6437) is the published pair. Do not restate the older pair as the headline.

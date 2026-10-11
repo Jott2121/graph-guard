@@ -6,9 +6,8 @@ agent-cost-attribution, crucible, sabot, quorum-cal, claude-md-ab). Fix bugs
 here first, then re-copy; don't patch a downstream copy on its own.
 `tests/test_guard_shell.py` is the spec. Copy it too.
 
-`audit-log.sh` and `format-and-scan.sh` are only here so `hooks.json` resolves.
-They are **not** canonical. `format-and-scan.sh` differs per repo, so keep each
-repo's own copy.
+`audit-log.sh` and `format-and-scan.sh` are **not** canonical. They are
+per-repo, so keep each repo's own copy when copying the two canonical files.
 
 ## What `guard-shell.sh` decides
 

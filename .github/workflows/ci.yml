@@ -44,3 +44,48 @@ jobs:
         uses: py-cov-action/python-coverage-comment-action@cc6cde2639ed103404ce0da9e75114ae9561e691 # v3
         with:
           GITHUB_TOKEN: ${{ github.token }}
+
+  receipts:
+    # Cross-check the structure-derived contrast against eval/results.json.
+    # The real-session headline has no public raw artifact; the script locks
+    # those README strings instead of recomputing them.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+      - name: Check published numbers
+        run: python scripts/check_receipts.py
+
+  no-employer-data:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      # The README author byline and pyproject authors do not name an employer,
+      # so README.md stays in the scan. Excluding it would hide a later slip.
+      # AGENTS.md and .cursor/ name the banned terms in policy text; .github/
+      # contains this pattern itself.
+      - name: Block employer / export-control markers and committed build junk
+        run: |
+          # bash -e does not abort on a failing `!` command, so `! git grep`
+          # stays green when a banned term is present. Branch on git's own
+          # exit codes instead: 0 = hit (fail), 1 = clean, anything else = fail.
+          status=0
+          git grep -nIiE 'lockheed|\blmco\b|\bCUI\b|ITAR|EXPORT CONTROLLED|PROPRIETARY' -- . ':!.cursor' ':!AGENTS.md' ':!.github' || status=$?
+          if [ "$status" -eq 0 ]; then
+            echo "employer or export-control marker found" >&2
+            exit 1
+          elif [ "$status" -ne 1 ]; then
+            echo "employer scan failed to run (git grep exit $status)" >&2
+            exit 1
+          fi
+          status=0
+          git ls-files | grep -E '(__pycache__/|\.pyc$|^\.coverage$)' || status=$?
+          if [ "$status" -eq 0 ]; then
+            echo "committed build junk found" >&2
+            exit 1
+          elif [ "$status" -ne 1 ]; then
+            echo "build-junk scan failed to run (exit $status)" >&2
+            exit 1
+          fi
