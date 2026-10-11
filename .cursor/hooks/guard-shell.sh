@@ -5,8 +5,10 @@
 set -euo pipefail
 input="$(cat)"
 cmd="$(printf '%s' "$input" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("command",""))')"
-deny() { printf '{"permission":"deny","user_message":"%s","agent_message":"%s Open a PR instead; a human will do this step."}\n' "$1" "$1"; exit 0; }
-ask()  { printf '{"permission":"ask","user_message":"%s"}\n' "$1"; exit 0; }
+# json.dumps, not printf: a curl/wget command can contain quotes or backslashes,
+# and an unescaped user_message is invalid JSON (the ask decision never lands).
+deny() { python3 -c 'import json,sys; msg=sys.argv[1]; print(json.dumps({"permission":"deny","user_message":msg,"agent_message":msg+" Open a PR instead; a human will do this step."}))' "$1"; exit 0; }
+ask()  { python3 -c 'import json,sys; print(json.dumps({"permission":"ask","user_message":sys.argv[1]}))' "$1"; exit 0; }
 case "$cmd" in
   *"push --force"*|*"push -f"*|*"--force-with-lease"*) deny "Force-push blocked by repo policy." ;;
   *"reset --hard"*|*"rebase"*)                        deny "History rewrite blocked by repo policy." ;;

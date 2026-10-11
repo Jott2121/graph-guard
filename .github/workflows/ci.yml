@@ -68,5 +68,24 @@ jobs:
       # contains this pattern itself.
       - name: Block employer / export-control markers and committed build junk
         run: |
-          ! git grep -nIiE 'lockheed|\blmco\b|\bCUI\b|ITAR|EXPORT CONTROLLED|PROPRIETARY' -- . ':!.cursor' ':!AGENTS.md' ':!.github'
-          ! git ls-files | grep -E '(__pycache__/|\.pyc$|^\.coverage$)'
+          # bash -e does not abort on a failing `!` command, so `! git grep`
+          # stays green when a banned term is present. Branch on git's own
+          # exit codes instead: 0 = hit (fail), 1 = clean, anything else = fail.
+          status=0
+          git grep -nIiE 'lockheed|\blmco\b|\bCUI\b|ITAR|EXPORT CONTROLLED|PROPRIETARY' -- . ':!.cursor' ':!AGENTS.md' ':!.github' || status=$?
+          if [ "$status" -eq 0 ]; then
+            echo "employer or export-control marker found" >&2
+            exit 1
+          elif [ "$status" -ne 1 ]; then
+            echo "employer scan failed to run (git grep exit $status)" >&2
+            exit 1
+          fi
+          status=0
+          git ls-files | grep -E '(__pycache__/|\.pyc$|^\.coverage$)' || status=$?
+          if [ "$status" -eq 0 ]; then
+            echo "committed build junk found" >&2
+            exit 1
+          elif [ "$status" -ne 1 ]; then
+            echo "build-junk scan failed to run (exit $status)" >&2
+            exit 1
+          fi
