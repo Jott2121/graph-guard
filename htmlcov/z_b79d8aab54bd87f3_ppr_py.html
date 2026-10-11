@@ -5,7 +5,7 @@
     <title>Coverage for graph_guard/ppr.py: 95%</title>
     <link rel="icon" sizes="32x32" href="favicon_32_cb_c827f16f.png">
     <link rel="stylesheet" href="style_cb_4667309f.css" type="text/css">
-    <script src="coverage_html_cb_dd2e7eb5.js" defer></script>
+    <script src="coverage_html_cb_15cffcd0.js" defer></script>
 </head>
 <body class="pyfile">
 <header>
@@ -64,8 +64,8 @@
             <a id="indexLink" class="nav" href="index.html">&Hat; index</a> &nbsp; &nbsp;
             <a id="nextFileLink" class="nav" href="z_b79d8aab54bd87f3_rdf_export_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
-            <a class="nav" href="https://coverage.readthedocs.io/en/7.15.2">coverage.py v7.15.2</a>,
-            created at 2026-07-25 20:00 +0000
+            <a class="nav" href="https://coverage.readthedocs.io/en/7.16.1">coverage.py v7.16.1</a>,
+            created at 2026-10-11 16:33 +0000
         </p>
         <aside class="hidden">
             <button type="button" class="button_next_chunk" data-shortcut="j"></button>
@@ -80,18 +80,18 @@
     </div>
 </header>
 <main id="source">
-    <p class="pln"><span class="n"><a id="t1" href="#t1">1</a></span><span class="t"><span class="str">"""Personalized PageRank over a weighted adjacency dict &#8212; stdlib only.</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t1" href="#t1">1</a></span><span class="t"><span class="str">&quot;&quot;&quot;Personalized PageRank over a weighted adjacency dict &#8212; stdlib only.</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t2" href="#t2">2</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t3" href="#t3">3</a></span><span class="t"><span class="str">HippoRAG-style single-shot multi-hop retrieval: seed on query-linked nodes and let PPR</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t4" href="#t4">4</a></span><span class="t"><span class="str">diffuse relevance across typed edges. NetworkX is an optional drop-in (pyproject [graph])."""</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t4" href="#t4">4</a></span><span class="t"><span class="str">diffuse relevance across typed edges. NetworkX is an optional drop-in (pyproject [graph]).&quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t5" href="#t5">5</a></span><span class="t"><span class="key">from</span> <span class="nam">__future__</span> <span class="key">import</span> <span class="nam">annotations</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t6" href="#t6">6</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t7" href="#t7">7</a></span><span class="t"><span class="key">import</span> <span class="nam">math</span>&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t8" href="#t8">8</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t9" href="#t9">9</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t10" href="#t10">10</a></span><span class="t"><span class="key">def</span> <span class="nam">personalized_pagerank</span><span class="op">(</span><span class="nam">adj</span><span class="op">,</span> <span class="nam">seeds</span><span class="op">,</span> <span class="op">*</span><span class="op">,</span> <span class="nam">alpha</span><span class="op">=</span><span class="num">0.85</span><span class="op">,</span> <span class="nam">iters</span><span class="op">=</span><span class="num">50</span><span class="op">,</span> <span class="nam">tol</span><span class="op">=</span><span class="num">1e-9</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t11" href="#t11">11</a></span><span class="t">    <span class="str">"""adj: {node: {neighbor: weight}}. seeds: iterable of node ids to personalize toward.</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t12" href="#t12">12</a></span><span class="t"><span class="str">    Returns {node: score} summing to ~1. Absent seeds -> plain PageRank (uniform teleport)."""</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t11" href="#t11">11</a></span><span class="t">    <span class="str">&quot;&quot;&quot;adj: {node: {neighbor: weight}}. seeds: iterable of node ids to personalize toward.</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t12" href="#t12">12</a></span><span class="t"><span class="str">    Returns {node: score} summing to ~1. Absent seeds -&gt; plain PageRank (uniform teleport).&quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t13" href="#t13">13</a></span><span class="t">    <span class="nam">nodes</span> <span class="op">=</span> <span class="nam">set</span><span class="op">(</span><span class="nam">adj</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t14" href="#t14">14</a></span><span class="t">    <span class="key">for</span> <span class="nam">nbrs</span> <span class="key">in</span> <span class="nam">adj</span><span class="op">.</span><span class="nam">values</span><span class="op">(</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t15" href="#t15">15</a></span><span class="t">        <span class="nam">nodes</span><span class="op">.</span><span class="nam">update</span><span class="op">(</span><span class="nam">nbrs</span><span class="op">)</span>&nbsp;</span><span class="r"></span></p>
@@ -128,8 +128,8 @@
     <p class="pln"><span class="n"><a id="t46" href="#t46">46</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="pln"><span class="n"><a id="t47" href="#t47">47</a></span><span class="t">&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t48" href="#t48">48</a></span><span class="t"><span class="key">def</span> <span class="nam">node_specificity</span><span class="op">(</span><span class="nam">adj</span><span class="op">)</span><span class="op">:</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t49" href="#t49">49</a></span><span class="t">    <span class="str">"""Down-weight high-degree generic hubs (IDF analogue): {node: 1/(1+log(1+degree))}.</span>&nbsp;</span><span class="r"></span></p>
-    <p class="pln"><span class="n"><a id="t50" href="#t50">50</a></span><span class="t"><span class="str">    adjacency() is symmetric, so each node's own row already holds its full degree."""</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t49" href="#t49">49</a></span><span class="t">    <span class="str">&quot;&quot;&quot;Down-weight high-degree generic hubs (IDF analogue): {node: 1/(1+log(1+degree))}.</span>&nbsp;</span><span class="r"></span></p>
+    <p class="pln"><span class="n"><a id="t50" href="#t50">50</a></span><span class="t"><span class="str">    adjacency() is symmetric, so each node&#x27;s own row already holds its full degree.&quot;&quot;&quot;</span>&nbsp;</span><span class="r"></span></p>
     <p class="run"><span class="n"><a id="t51" href="#t51">51</a></span><span class="t">    <span class="key">return</span> <span class="op">{</span><span class="nam">u</span><span class="op">:</span> <span class="num">1.0</span> <span class="op">/</span> <span class="op">(</span><span class="num">1.0</span> <span class="op">+</span> <span class="nam">math</span><span class="op">.</span><span class="nam">log</span><span class="op">(</span><span class="num">1.0</span> <span class="op">+</span> <span class="nam">len</span><span class="op">(</span><span class="nam">nbrs</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="key">for</span> <span class="nam">u</span><span class="op">,</span> <span class="nam">nbrs</span> <span class="key">in</span> <span class="nam">adj</span><span class="op">.</span><span class="nam">items</span><span class="op">(</span><span class="op">)</span><span class="op">}</span>&nbsp;</span><span class="r"></span></p>
 </main>
 <footer>
@@ -139,8 +139,8 @@
             <a class="nav" href="index.html">&Hat; index</a> &nbsp; &nbsp;
             <a class="nav" href="z_b79d8aab54bd87f3_rdf_export_py.html">&#xbb; next</a>
             &nbsp; &nbsp; &nbsp;
-            <a class="nav" href="https://coverage.readthedocs.io/en/7.15.2">coverage.py v7.15.2</a>,
-            created at 2026-07-25 20:00 +0000
+            <a class="nav" href="https://coverage.readthedocs.io/en/7.16.1">coverage.py v7.16.1</a>,
+            created at 2026-10-11 16:33 +0000
         </p>
     </div>
 </footer>
