@@ -99,8 +99,8 @@ The thesis, mapped onto this result: **when the win is formal semantics, not jus
 — entailment of facts nothing asserted directly, SHACL-validated data quality, a shared ontology
 multiple teams query against, standards-based interop (Neptune, Jena, any SPARQL 1.1 endpoint),
 and an *exact, auditable* answer to a precisely-scoped multi-hop question — RDF/OWL/SPARQL wins,
-and PageRank isn't in the running because it has no concept of "prove it." That is the AWS
-Neptune context this Tier B branch was built to rehearse: Neptune's RDF/SPARQL engine plus an
+and PageRank isn't in the running because it has no concept of "prove it." That is the
+architecture this Tier B branch exercises: a managed RDF/SPARQL engine such as Neptune plus an
 external reasoner is the same architecture as `rdf_export.py` → `ontology.ttl` → `owlrl` →
 `fuseki.py`, just at enterprise scale and with a managed triplestore instead of an in-process
 `rdflib.Graph`. For a cross-team semantic layer over heterogeneous enterprise data — where

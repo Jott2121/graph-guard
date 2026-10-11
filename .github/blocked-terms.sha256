@@ -1,0 +1,7 @@
+# SHA-256 of lowercased blocked terms (employer name and abbreviations), one per line.
+# Plaintext terms are never committed. Add one with:
+#   python3 -c 'import sys; sys.path.insert(0, "scripts"); from scan_blocked_terms import digest; print(digest(sys.argv[1]))' 'term'
+cb5c36fe59056a6a1afb4b133d30981f672257d6c372bace38798b504fc0c6f2
+c376013522845bfce25461e2335a75a6808fd9365beba1c8ad75200ff2488ea3
+f277af9c64194778d745db1e6f142c724110717970ed251b4611f28e683957ae
+8c6a10a10f5de2282f957c71717b5a15ab371af5bd781b4d38e72f556964da06

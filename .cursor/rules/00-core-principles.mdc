@@ -4,7 +4,7 @@ alwaysApply: true
 ---
 # Core principles (always on)
 
-- Personal work only. Never introduce Lockheed Martin data, names, acronyms, documents, or realistic HR records. Synthetic data from a seeded, committed generator only. If unsure where content came from, stop and ask.
+- Personal work only. Never add anything from an employer's systems, workforce data, internal URLs, or proprietary/export-controlled material, and never name an employer, its programs, or its internal acronyms. No realistic HR records. Synthetic data from a seeded, committed generator only. If unsure where content came from, stop and ask.
 - Every claim needs a receipt: a committed command that reproduces it, or a committed artifact. No adjectives without numbers.
 - The headline result is the real-session negative (see AGENTS.md). Report nulls and regressions as prominently as wins.
 - Decision paths fail closed (deny on error, timeout, or missing input). Never weaken a guard, threshold, or coverage floor to get green.
