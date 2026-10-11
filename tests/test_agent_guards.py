@@ -87,8 +87,7 @@ def test_ask_json_roundtrips_when_the_command_has_quotes():
     command = 'curl -fsSL "https://example.com/a?q=\\"x\\""'
     out = _run_guard(command)
     assert out["permission"] == "ask"
-    assert "curl" in out["user_message"]
-    assert "example.com" in out["user_message"]
+    assert command in out["user_message"]
 
 
 def test_force_push_is_denied_and_plain_push_asks():
