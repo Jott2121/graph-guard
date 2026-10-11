@@ -12,7 +12,7 @@ description: Use before opening or updating a PR, or when README/docs numbers ch
    Lint and typecheck are not configured. Do not claim they passed.
    Do **not** run `eval/real_sessions_ab.py` or `eval/real_vault_lift.py` unless a local vault is actually present. Never pass `--skip-controls`. If you did not run the session eval, mark those README figures as locked-not-recomputed.
 2. `git diff origin/main -- README.md docs/ eval/results.json scripts/check_receipts.py` — list every number that changed. For each figure that comes from `eval/results.json`, re-run `python scripts/check_receipts.py`. If a number changed and you cannot show the artifact, mark it UNVERIFIED and stop.
-3. Grep the diff for employer-data and secret patterns (see `.cursor/rules/40-security-and-data.mdc`): `lockheed`, `lmco`, `CUI`, `ITAR`, `EXPORT CONTROLLED`, `PROPRIETARY`, private keys. Any new hit outside `.cursor/` and `AGENTS.md` = stop and report. The README author byline does not name an employer.
+3. Run `python3 scripts/scan_blocked_terms.py` (hashed employer names, whole tree; any non-zero exit = stop and report). Then grep the diff for export-control and secret patterns (see `.cursor/rules/40-security-and-data.mdc`): `CUI`, `ITAR`, `EXPORT CONTROLLED`, `PROPRIETARY`, private keys. Any new hit outside `.cursor/` and `AGENTS.md` = stop and report. The README author byline does not name an employer.
 4. Confirm `--cov-fail-under=90` is unchanged, no coverage floor was lowered, and no tests were skipped or removed. The Fuseki live test is the only opt-in skip.
 5. Output a Markdown block:
    - Commands run + pass/fail

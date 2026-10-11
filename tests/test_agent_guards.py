@@ -1,6 +1,7 @@
 """Regression tests for the agent guards Bugbot flagged on the setup PR.
 
-The employer scan must fail the step when a banned term is committed.
+The export-control marker scan must fail the step when a banned marker is committed.
+The hashed employer-name scanner is covered in tests/test_blocked_terms.py.
 The shell hook must emit parseable JSON when the command contains quotes.
 """
 from __future__ import annotations
@@ -13,14 +14,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 GUARD = ROOT / ".cursor" / "hooks" / "guard-shell.sh"
 CI = ROOT / ".github" / "workflows" / "ci.yml"
-# Split so this source file does not itself contain the banned term.
+# Split so this source file does not itself contain the banned marker.
 # git grep scans tracked files, and this test is one of them.
-BANNED = "lock" + "heed"
+BANNED = "it" + "ar"
 
 
-def _employer_scan_script() -> str:
+def _marker_scan_script() -> str:
     text = CI.read_text()
-    marker = "name: Block employer / export-control markers and committed build junk\n"
+    marker = "name: Block export-control markers and committed build junk\n"
     run_at = text.index("run: |", text.index(marker))
     body = []
     for line in text[run_at:].splitlines()[1:]:
@@ -39,7 +40,7 @@ def _employer_scan_script() -> str:
 
 def _run_scan(cwd: Path) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        ["bash", "-eo", "pipefail", "-c", _employer_scan_script()],
+        ["bash", "-eo", "pipefail", "-c", _marker_scan_script()],
         cwd=cwd,
         capture_output=True,
         text=True,
@@ -67,12 +68,12 @@ def _run_guard(command: str) -> dict:
     return _decision(json.dumps({"command": command}))
 
 
-def test_employer_scan_passes_on_this_tree():
+def test_marker_scan_passes_on_this_tree():
     proc = _run_scan(ROOT)
     assert proc.returncode == 0, proc.stdout + proc.stderr
 
 
-def test_employer_scan_fails_closed_on_a_banned_term(tmp_path):
+def test_marker_scan_fails_closed_on_a_banned_marker(tmp_path):
     repo = tmp_path / "repo"
     repo.mkdir()
     subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
