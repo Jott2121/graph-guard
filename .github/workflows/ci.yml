@@ -63,12 +63,14 @@ jobs:
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       # Employer names live only as SHA-256 digests in .github/blocked-terms.sha256,
-      # so the scan covers every tracked file with no exclusions. The script exits
+      # so the scan covers every tracked file, AGENTS.md, .cursor/ and .github/
+      # included; it skips only the hash file and build junk. The script exits
       # non-zero on a hit and on a missing, empty, or malformed hash file.
-      # BLOCKED_TERMS is an optional secret with extra comma-separated terms.
+      # EMPLOYER_MARKERS is an optional secret (regex alternation) that adds terms;
+      # the hash list alone still fails closed when the secret is unset.
       - name: Block employer names (hashed terms, whole tree)
         env:
-          BLOCKED_TERMS: ${{ secrets.BLOCKED_TERMS }}
+          EMPLOYER_MARKERS: ${{ secrets.EMPLOYER_MARKERS }}
         run: python3 scripts/scan_blocked_terms.py
       # AGENTS.md and .cursor/ name these markers in policy text; .github/
       # contains this pattern itself.

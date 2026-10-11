@@ -17,13 +17,13 @@ SCANNER = ROOT / "scripts" / "scan_blocked_terms.py"
 HASHES = ROOT / ".github" / "blocked-terms.sha256"
 HOOK = ROOT / ".cursor" / "hooks" / "format-and-scan.sh"
 PLANTED = "lock" + "heed"
-PLANTED_ABBR = "lm" + "co"
+PLANTED_ABBR = "l" + "mco"
 
 
-def _scan(cwd: Path, *args: str, env_terms: str | None = None) -> subprocess.CompletedProcess[str]:
-    env = {k: v for k, v in os.environ.items() if k != "BLOCKED_TERMS"}
-    if env_terms is not None:
-        env["BLOCKED_TERMS"] = env_terms
+def _scan(cwd: Path, *args: str, markers: str | None = None) -> subprocess.CompletedProcess[str]:
+    env = {k: v for k, v in os.environ.items() if k != "EMPLOYER_MARKERS"}
+    if markers is not None:
+        env["EMPLOYER_MARKERS"] = markers
     return subprocess.run(
         [sys.executable, str(SCANNER), *args],
         cwd=cwd,
@@ -80,20 +80,41 @@ def test_planted_abbreviation_is_caught_as_a_whole_word_only(tmp_path):
     assert "b.md" not in proc.stdout
 
 
-def test_env_terms_are_honored_including_phrases_across_lines(tmp_path):
-    repo = _repo(tmp_path, {"notes.md": "we met Acme\nWidgets today\n", "other.md": "acme alone\n"})
-    assert _scan(repo).returncode == 0
-    proc = _scan(repo, env_terms=" , Acme Widgets ,")
+def test_planted_term_is_caught_with_no_secret_set(tmp_path):
+    repo = _repo(tmp_path, {"AGENTS.md": f"Never use {PLANTED} data\n"})
+    proc = _scan(repo)
     assert proc.returncode == 1
-    assert "notes.md:1: blocked term" in proc.stdout
+    proc = _scan(repo, markers="")
+    assert proc.returncode == 1
+
+
+def test_employer_markers_regex_adds_terms_without_echoing_them(tmp_path):
+    repo = _repo(tmp_path, {"notes.md": "we met\nAcme Widgets today\n", "other.md": "acme alone\n"})
+    assert _scan(repo).returncode == 0
+    proc = _scan(repo, markers=r"acme\s+widgets|globex")
+    assert proc.returncode == 1
+    assert "notes.md:2: blocked term (EMPLOYER_MARKERS match)" in proc.stdout
     assert "other.md" not in proc.stdout
     assert "widgets" not in proc.stdout.lower()
 
 
-def test_three_word_env_term(tmp_path):
-    repo = _repo(tmp_path, {"n.md": "the Big Acme Widgets plant\n"})
-    assert _scan(repo, env_terms="big acme widgets").returncode == 1
-    assert _scan(repo, env_terms="small acme widgets").returncode == 0
+def test_employer_markers_does_not_replace_the_hash_list(tmp_path):
+    repo = _repo(tmp_path, {"a.md": f"{PLANTED}\n"})
+    assert _scan(repo, markers="globex").returncode == 1
+
+
+def test_invalid_or_empty_matching_markers_fail_closed(tmp_path):
+    repo = _repo(tmp_path, {"a.md": "clean\n"})
+    for bad in ("acme(", "acme|", ".*"):
+        proc = _scan(repo, markers=bad)
+        assert proc.returncode == 2, bad
+        assert "EMPLOYER_MARKERS" in proc.stderr
+
+
+def test_hash_file_itself_is_excluded(tmp_path):
+    repo = _repo(tmp_path, {"a.md": "clean\n"})
+    (repo / ".github" / "blocked-terms.sha256").write_text(f"{'0' * 64}\n# globex\n")
+    assert _scan(repo, markers="globex").returncode == 0
 
 
 def test_explicit_path_mode_scans_only_that_file(tmp_path):
@@ -113,7 +134,7 @@ def test_missing_hash_file_fails_closed(tmp_path):
 def test_empty_or_comment_only_hash_file_fails_closed(tmp_path):
     for content in ("", "\n\n", "# nothing here\n"):
         repo = _repo(tmp_path, {"a.md": "clean\n"}, hashes=content)
-        proc = _scan(repo, env_terms="acme")
+        proc = _scan(repo, markers="acme")
         assert proc.returncode == 2, repr(content)
         shutil.rmtree(repo)
 
@@ -127,7 +148,7 @@ def test_outside_a_git_repo_fails_closed(tmp_path):
     (tmp_path / ".github").mkdir()
     shutil.copy(HASHES, tmp_path / ".github" / "blocked-terms.sha256")
     env = {**os.environ, "GIT_CEILING_DIRECTORIES": str(tmp_path.parent)}
-    env.pop("BLOCKED_TERMS", None)
+    env.pop("EMPLOYER_MARKERS", None)
     proc = subprocess.run(
         [sys.executable, str(SCANNER)], cwd=tmp_path, env=env, capture_output=True, text=True, check=False
     )
@@ -153,7 +174,8 @@ def test_generated_junk_is_skipped_but_dotfiles_and_policy_files_are_not(tmp_pat
 def test_ci_runs_the_scanner_with_the_optional_secret():
     ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
     assert "run: python3 scripts/scan_blocked_terms.py" in ci
-    assert "BLOCKED_TERMS: ${{ secrets.BLOCKED_TERMS }}" in ci
+    assert "EMPLOYER_MARKERS: ${{ secrets.EMPLOYER_MARKERS }}" in ci
+    assert "BLOCKED_TERMS" not in ci
 
 
 def test_edit_hook_warns_on_a_planted_term(tmp_path):
