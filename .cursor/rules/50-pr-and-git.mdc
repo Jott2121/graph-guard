@@ -9,5 +9,5 @@ alwaysApply: false
 - PR body sections (required): What · Why · How verified (exact commands + trimmed output) · Numbers changed (before → after + command) · Risks · Not done / follow-ups.
 - Attach artifacts for anything visual or behavioral (screenshot, short video, eval table).
 - Never force-push shared branches, rewrite history, tag, or publish. A human merges.
-- The shell guard blocks `git pull --rebase` (any `rebase`), force-push, and `reset --hard`.
+- The shell guard's matcher includes `git pull`. It blocks `git pull --rebase` (any `rebase`) and allows a plain `git pull`. It also blocks force-push and `reset --hard`.
 - Address every Bugbot finding: fix it or reply with a reason. Don't silently resolve.

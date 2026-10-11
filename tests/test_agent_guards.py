@@ -6,6 +6,7 @@ The shell hook must emit parseable JSON when the command contains quotes.
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 from pathlib import Path
 
@@ -46,15 +47,24 @@ def _run_scan(cwd: Path) -> subprocess.CompletedProcess[str]:
     )
 
 
-def _run_guard(command: str) -> dict:
-    proc = subprocess.run(
+def _run_guard_raw(payload: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
         ["bash", str(GUARD)],
-        input=json.dumps({"command": command}),
+        input=payload,
         capture_output=True,
         text=True,
-        check=True,
+        check=False,
     )
+
+
+def _decision(payload: str) -> dict:
+    proc = _run_guard_raw(payload)
+    assert proc.returncode == 0, proc.stderr
     return json.loads(proc.stdout)
+
+
+def _run_guard(command: str) -> dict:
+    return _decision(json.dumps({"command": command}))
 
 
 def test_employer_scan_passes_on_this_tree():
@@ -78,9 +88,42 @@ def test_employer_scan_fails_closed_on_a_banned_term(tmp_path):
     assert BANNED in (proc.stdout + proc.stderr).lower()
 
 
-def test_pull_rebase_is_denied():
-    out = _run_guard("git pull --rebase origin main")
-    assert out["permission"] == "deny"
+def test_pull_matcher_sees_plain_and_rebasing_pulls():
+    hooks = json.loads((ROOT / ".cursor" / "hooks.json").read_text())
+    matcher = hooks["hooks"]["beforeShellExecution"][0]["matcher"]
+    assert re.search(matcher, "git pull")
+    assert re.search(matcher, "git pull --rebase origin main")
+    assert not re.search(matcher, "git status")
+
+
+def test_plain_pull_is_allowed_and_rebasing_pull_is_denied():
+    assert _run_guard("git pull")["permission"] == "allow"
+    assert _run_guard("git pull origin main")["permission"] == "allow"
+    assert _run_guard("git pull --rebase origin main")["permission"] == "deny"
+
+
+def test_missing_blank_and_non_string_commands_are_denied():
+    payloads = [
+        "{}",
+        json.dumps({"cwd": "/tmp"}),
+        json.dumps({"command": ""}),
+        json.dumps({"command": "   \n\t"}),
+        json.dumps({"command": None}),
+        json.dumps({"command": 1}),
+        json.dumps({"command": ["git", "status"]}),
+        json.dumps({"command": {"cmd": "git status"}}),
+        "[]",
+    ]
+    for payload in payloads:
+        decision = _decision(payload)
+        assert decision["permission"] == "deny", payload
+
+
+def test_invalid_json_exits_nonzero():
+    for payload in ("{", "", "not-json", '{"command":'):
+        proc = _run_guard_raw(payload)
+        assert proc.returncode != 0, payload
+        assert "allow" not in proc.stdout
 
 
 def test_ask_json_roundtrips_when_the_command_has_quotes():
