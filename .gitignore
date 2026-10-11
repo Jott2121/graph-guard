@@ -4,6 +4,7 @@ __pycache__/
 .pytest_cache/
 *.egg-info/
 .superpowers/
+.cursor/hook-logs/
 *.sqlite
 *.sqlite3
 data/
