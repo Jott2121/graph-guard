@@ -1,0 +1,13 @@
+---
+description: Use when committing, opening or updating a pull request, or writing a PR description
+alwaysApply: false
+---
+# PRs and git
+
+- Branch per task. Small PRs, one intent, under ~400 changed lines when possible.
+- Conventional titles: `feat|fix|test|docs|refactor|chore|perf(scope): summary`.
+- PR body sections (required): What · Why · How verified (exact commands + trimmed output) · Numbers changed (before → after + command) · Risks · Not done / follow-ups.
+- Attach artifacts for anything visual or behavioral (screenshot, short video, eval table).
+- Never force-push shared branches, rewrite history, tag, or publish. A human merges.
+- The shell guard's matcher includes `git pull`. It blocks `git pull --rebase` (any `rebase`) and allows a plain `git pull`. It blocks force-push and `reset --hard` even when the flag is not next to the subcommand.
+- Address every Bugbot finding: fix it or reply with a reason. Don't silently resolve.

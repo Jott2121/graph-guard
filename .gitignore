@@ -11,3 +11,6 @@ data/
 mutants/
 .mutmut-cache
 html/
+.coverage
+.coverage.*
+.cursor/hook-logs/

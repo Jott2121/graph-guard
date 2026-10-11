@@ -9,8 +9,8 @@ the `[rdf]` extra — Tier A stays near-stdlib.
 Tier A (built: SQLite triples + PageRank, 51 tests, live over the vault) is the pragmatic working
 core. Tier B is the deliberate **enterprise-fidelity** layer: model the same graph as a formal
 ontology (RDF/OWL/SHACL), serve it over **SPARQL** on a local triplestore, and demonstrate
-**reasoning/entailment**. Purpose: (1) genuine hands-on with the exact stack Jeff would build at
-Lockheed under Gina (AWS Neptune uses RDF/SPARQL + external reasoners); (2) the architect artifact —
+**reasoning/entailment**. Purpose: (1) genuine hands-on with the stack
+AWS Neptune uses (RDF/SPARQL + external reasoners); (2) the architect artifact —
 run the *same* query as SPARQL vs PageRank and show **when the heavyweight semantic stack earns its
 cost**. Right-sizing note (arXiv 2507.09389): keep OWL expressive enough to be useful, not maximal.
 
@@ -44,7 +44,7 @@ cost**. Right-sizing note (arXiv 2507.09389): keep OWL expressive enough to be u
    Test: a fact derivable only by inference is returned post-materialization.
 6. **`docs/SPARQL-vs-PPR.md`** — the architect writeup: same "what superseded X, transitively?"
    answered by (a) Tier-A PageRank and (b) a Tier-B SPARQL property-path over the reasoned graph;
-   compare precision, explainability, cost, latency. This is the Gina/Lockheed demo.
+   compare precision, explainability, cost, latency. This is the architect comparison.
 
 ## Deps (all in `[rdf]` extra)
 `rdflib>=7`, `pyshacl` (SHACL), `owlrl` (reasoning). Apache Jena Fuseki (external, Java) for the

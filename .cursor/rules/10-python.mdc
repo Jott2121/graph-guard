@@ -1,0 +1,14 @@
+---
+description: Python conventions for this repo
+globs: "**/*.py"
+alwaysApply: false
+---
+# Python
+
+- Target Python 3.11+ (CI runs 3.11, 3.12, and 3.13).
+- Stdlib-first. A new runtime dependency needs a one-line justification in the PR and a pinned lower bound in pyproject.
+- Type hints on all public functions; `from __future__ import annotations` where useful.
+- No bare `except:`; no `except Exception: pass` in any decision path. Raise specific exceptions.
+- Deterministic by default: seed every RNG, sort dict/set iteration before hashing or printing, freeze timestamps in tests.
+- Secrets via `os.environ` only; never log secret values.
+- Use `pathlib`; no hard-coded absolute paths (no `/Users/...`).

@@ -1,0 +1,6 @@
+{
+  "setup-worktree-unix": [
+    "python -m pip install -q -e '.[dev,rdf]'",
+    "[ -f \"$ROOT_WORKTREE_PATH/.env\" ] && cp \"$ROOT_WORKTREE_PATH/.env\" .env || true"
+  ]
+}

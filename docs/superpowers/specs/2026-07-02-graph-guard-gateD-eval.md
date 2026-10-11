@@ -10,8 +10,8 @@ Tier A and Tier B both ship an honest caveat: *"eval proves the mechanism, not r
 `tfidf` stub — it proves graph retrieval CAN beat flat on a synthetic multi-hop case, but says nothing
 about Jeff's real ~686-node vault. Gate D replaces that gap with **measured numbers**: does the typed-graph
 layer (and its owlrl-reasoned extension) actually improve retrieval over flat lexical on the real vault?
-This is the gate before any thought of wiring the ontology into live Bow, and the strongest Gina/Lockheed
-artifact — either "here's measured lift," or the sharper honest result "at 686 notes heavyweight semantics
+This is the gate before any thought of wiring the ontology into live Bow
+— either "here's measured lift," or the sharper honest result "at 686 notes heavyweight semantics
 don't earn their retrieval cost; here's the scale where they would."
 
 **Standard (non-negotiable, from rag-guard norms):** every printed metric comes from a real harness run;
