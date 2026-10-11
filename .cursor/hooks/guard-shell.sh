@@ -33,6 +33,9 @@ FETCHERS = {"curl", "wget"}
 PUBLISHERS = {"uv", "poetry", "hatch", "flit", "npm", "pnpm", "yarn", "cargo"}
 GIT_VALUED = {"-C", "-c", "--git-dir", "--work-tree", "--namespace",
               "--super-prefix", "--config-env"}
+CONFIG_VALUED = {"-f", "--file", "--blob", "-t", "--type", "--default",
+                 "--comment", "--value"}
+FETCH_WORD = re.compile(r"(?<![\w.-])(?:curl|wget)(?![\w.-])")
 RM_TARGETS = {"/", "/*", "~", "~/", "~/*", "$HOME", "$HOME/", "$HOME/*",
               "${HOME}", "${HOME}/", "${HOME}/*", "--no-preserve-root"}
 SHELL_SUBST_FETCH = re.compile(
@@ -72,8 +75,13 @@ def split_commands(text):
     out, buf, quote, i, n = [], [], None, 0, len(text)
 
     def flush(op):
-        out.append(("".join(buf), op))
+        seg = "".join(buf)
         buf.clear()
+        if seg.strip():
+            out.append((seg, op))
+        elif op == "|" and out:
+            # `(curl x) | sh`, `{ curl x; } | sh`: the group's output is piped.
+            out[-1] = (out[-1][0], op)
 
     while i < n:
         c = text[i]
@@ -132,7 +140,7 @@ def split_commands(text):
         buf.append(c)
         i += 1
     flush(None)
-    return [(seg, op) for seg, op in out if seg.strip()]
+    return out
 
 
 def tokenize(segment):
@@ -192,17 +200,24 @@ def is_rebase_key(key):
     return key == "pull.rebase" or (key.startswith("branch.") and key.endswith(".rebase"))
 
 
-def check_alias(value, depth):
-    """A git alias is `git <value>`, or a shell command if it starts with `!`."""
-    check_text(value[1:] if value.startswith("!") else "git " + value, depth + 1)
+def check_alias(value, depth, config=(), args=()):
+    """Expand a git alias as git does: `git <config> <value> <args>`, or `<value> <args>` for `!`."""
+    tail = " ".join(shlex.quote(a) for a in args)
+    if value.startswith("!"):
+        return check_text(value[1:] + " " + tail, depth + 1)
+    prefix = " ".join("-c " + shlex.quote(pair) for pair in config)
+    return check_text(" ".join(("git", prefix, value, tail)), depth + 1)
 
 
 def check_git(config, sub, args, depth):
-    """Raise Denied for a forbidden git invocation; return True for a normal push."""
+    """Raise Denied for a forbidden git invocation, else return its verdict."""
     for pair in config:
         key, value = split_kv(pair)
         if key.startswith("alias.") and key[6:] == sub and value:
-            check_alias(value, depth)
+            rest = [c for c in config if c is not pair]
+            return check_alias(value, depth, rest, args)
+    for pair in config:
+        key, value = split_kv(pair)
         if sub == "pull" and is_rebase_key(key) and truthy(value):
             raise Denied(REWRITE_MSG)
     if sub == "push":
@@ -213,7 +228,7 @@ def check_git(config, sub, args, depth):
                 raise Denied(FORCE_MSG)
             if long_matches(a, TAG_LONG, min_len=2):
                 raise Denied(PUBLISH_MSG)
-        return True
+        return ASK_PUSH
     if sub == "reset":
         if any(long_matches(a, ("hard",), min_len=2) for a in args):
             raise Denied(REWRITE_MSG)
@@ -230,7 +245,14 @@ def check_git(config, sub, args, depth):
     elif sub == "tag":
         raise Denied(PUBLISH_MSG)
     elif sub == "config":
-        words = [a for a in args if not a.startswith("-")]
+        words, skip = [], False
+        for a in args:
+            if skip:
+                skip = False
+            elif a in CONFIG_VALUED:
+                skip = True
+            elif not a.startswith("-"):
+                words.append(a)
         if words[:1] == ["set"]:
             words = words[1:]
         if words:
@@ -240,7 +262,7 @@ def check_git(config, sub, args, depth):
                 raise Denied(REWRITE_MSG)
             if key.startswith("alias.") and value:
                 check_alias(value, depth)
-    return False
+    return ALLOW
 
 
 def check_tokens(tokens, depth):
@@ -249,8 +271,7 @@ def check_tokens(tokens, depth):
     names = [basename(t) for t in tokens]
     for i, name in enumerate(names):
         if name == "git":
-            if check_git(*parse_git(tokens, i), depth):
-                verdict = ASK_PUSH
+            verdict = max(verdict, check_git(*parse_git(tokens, i), depth))
         elif name == "twine" and "upload" in tokens[i + 1:]:
             raise Denied(PUBLISH_MSG)
         elif name in PUBLISHERS and "publish" in tokens[i + 1:]:
@@ -273,22 +294,35 @@ def check_tokens(tokens, depth):
     return verdict
 
 
+def reads_stdin_as_shell(tokens):
+    names = [basename(t) for t in tokens]
+    if set(names) & SHELLS:
+        return True
+    for i, name in enumerate(names):
+        if name in ("sudo", "doas"):
+            for a in tokens[i + 1:]:
+                if set(short_flags(a, valued="ugpCDhrtTU")) & {"s", "i"}:
+                    return True
+                if long_matches(a, ("shell", "login"), min_len=2):
+                    return True
+    return False
+
+
 def check_text(text, depth=0):
     """Raise Denied, or return a verdict, for a full command line."""
     if SHELL_SUBST_FETCH.search(text):
         raise Denied(PIPE_MSG)
     verdict = ALLOW
-    pipeline_fetches = False
+    fetched = False
     prev_op = None
     for segment, op in split_commands(text):
         tokens = tokenize(segment)
-        names = {basename(t) for t in tokens}
-        if prev_op != "|":
-            pipeline_fetches = False
-        if pipeline_fetches and names & SHELLS:
+        # Any earlier download counts, not just the previous stage, so a fetch
+        # inside a group, subshell, or $(...) piped into a shell is caught.
+        if fetched and prev_op == "|" and reads_stdin_as_shell(tokens):
             raise Denied(PIPE_MSG)
-        if names & FETCHERS:
-            pipeline_fetches = True
+        if FETCH_WORD.search(segment):
+            fetched = True
         verdict = max(verdict, check_tokens(tokens, depth))
         prev_op = op
     return verdict
