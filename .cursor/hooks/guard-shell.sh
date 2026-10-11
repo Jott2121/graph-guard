@@ -19,19 +19,57 @@ if [ -z "${cmd//[[:space:]]/}" ]; then
   deny "Missing or empty command blocked by repo policy."
 fi
 # Flags may follow other arguments, and short options may be clustered.
-# `git push origin --force`, `git push origin -uf`, and `git reset HEAD --hard`
-# must all deny. `git pull -r` is a rebase; the substring `rebase` does not see it.
+# Shell separators (; | &) are token boundaries, so `git pull -r; true` and
+# `git push origin -uf | cat` deny the same way as the unchained forms.
 # A plain `git pull` and `git push -u` (no f) stay allowed / ask.
-_short='(^|[[:space:]])-[A-Za-z]*'
-if [[ "$cmd" == *"git push"* && ( "$cmd" == *"--force"* || "$cmd" =~ ${_short}f[A-Za-z]*([[:space:]]|$) ) ]]; then
-  deny "Force-push blocked by repo policy."
-fi
-if [[ "$cmd" == *"git pull"* && ( "$cmd" == *"rebase"* || "$cmd" =~ ${_short}r[A-Za-z]*([[:space:]]|$) ) ]]; then
-  deny "History rewrite blocked by repo policy."
-fi
-if [[ "$cmd" == *"reset"* && "$cmd" == *"--hard"* ]]; then
-  deny "History rewrite blocked by repo policy."
-fi
+segments="${cmd//[;|&]/$'\n'}"
+while IFS= read -r segment || [ -n "$segment" ]; do
+  [ -z "${segment//[[:space:]]/}" ] && continue
+  _push=0
+  _pull=0
+  _reset=0
+  _force=0
+  _rebase=0
+  _hard=0
+  _in_git=0
+  _skip_next=0
+  _tokens=()
+  IFS=$' \t' read -ra _tokens <<< "$segment"
+  for token in "${_tokens[@]}"; do
+    token="${token#\"}"
+    token="${token%\"}"
+    token="${token#\'}"
+    token="${token%\'}"
+    if [ "$_skip_next" -eq 1 ]; then
+      _skip_next=0
+      continue
+    fi
+    case "$token" in
+      git) _in_git=1 ;;
+      -C|-c) [ "$_in_git" -eq 1 ] && _skip_next=1 ;;
+      push)  [ "$_in_git" -eq 1 ] && _push=1;  _in_git=0 ;;
+      pull)  [ "$_in_git" -eq 1 ] && _pull=1;  _in_git=0 ;;
+      reset) [ "$_in_git" -eq 1 ] && _reset=1; _in_git=0 ;;
+      --force|--force=*|--force-with-lease|--force-with-lease=*) _force=1 ;;
+      --rebase|--rebase=*) _rebase=1 ;;
+      --hard|--hard=*) _hard=1 ;;
+      --*) ;;
+      -*)
+        [[ "$token" == *f* ]] && _force=1
+        [[ "$token" == *r* ]] && _rebase=1
+        ;;
+    esac
+  done
+  if [ "$_push" -eq 1 ] && [ "$_force" -eq 1 ]; then
+    deny "Force-push blocked by repo policy."
+  fi
+  if [ "$_pull" -eq 1 ] && [ "$_rebase" -eq 1 ]; then
+    deny "History rewrite blocked by repo policy."
+  fi
+  if [ "$_reset" -eq 1 ] && [ "$_hard" -eq 1 ]; then
+    deny "History rewrite blocked by repo policy."
+  fi
+done <<< "$segments"
 case "$cmd" in
   *"push --force"*|*"push -f"*|*"--force-with-lease"*) deny "Force-push blocked by repo policy." ;;
   *"reset --hard"*|*"rebase"*)                        deny "History rewrite blocked by repo policy." ;;

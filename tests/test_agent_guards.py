@@ -103,6 +103,10 @@ def test_plain_pull_is_allowed_and_rebasing_pull_is_denied():
     assert _run_guard("git pull -r")["permission"] == "deny"
     assert _run_guard("git pull origin -r")["permission"] == "deny"
     assert _run_guard("git pull -ur origin")["permission"] == "deny"
+    assert _run_guard("git pull -r; echo done")["permission"] == "deny"
+    assert _run_guard("git pull origin -r | cat")["permission"] == "deny"
+    assert _run_guard("git pull -r && true")["permission"] == "deny"
+    assert _run_guard("echo done; git pull")["permission"] == "allow"
 
 
 def test_missing_blank_and_non_string_commands_are_denied():
@@ -151,10 +155,16 @@ def test_rewrite_flags_are_denied_away_from_the_subcommand():
         "git push origin --force-with-lease",
         "git push origin -uf",
         "git push -fu origin",
+        "git push origin -uf; git status",
+        "git push origin -uf | cat",
+        "git push -fu origin && true",
         "git reset HEAD --hard",
         "git reset --hard HEAD",
+        "git reset HEAD --hard; true",
     )
     for command in denied:
         assert _run_guard(command)["permission"] == "deny", command
     assert _run_guard("git reset HEAD")["permission"] == "allow"
     assert _run_guard("git commit -f")["permission"] == "allow"
+    asked = _run_guard("git push -u origin main; git status")
+    assert asked["permission"] == "ask"
