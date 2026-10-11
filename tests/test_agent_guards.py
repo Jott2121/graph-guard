@@ -138,3 +138,18 @@ def test_force_push_is_denied_and_plain_push_asks():
     asked = _run_guard("git push -u origin cursor/agent-setup-b6c5")
     assert asked["permission"] == "ask"
     assert _run_guard("git status")["permission"] == "allow"
+
+
+def test_rewrite_flags_are_denied_away_from_the_subcommand():
+    denied = (
+        "git push origin --force",
+        "git push origin -f",
+        "git push -u origin --force",
+        "git push origin --force-with-lease",
+        "git reset HEAD --hard",
+        "git reset --hard HEAD",
+    )
+    for command in denied:
+        assert _run_guard(command)["permission"] == "deny", command
+    assert _run_guard("git reset HEAD")["permission"] == "allow"
+    assert _run_guard("git commit -f")["permission"] == "allow"

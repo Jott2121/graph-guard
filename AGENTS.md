@@ -51,7 +51,7 @@ The published badges say **137 tests / 97% coverage**. The CI floor is `--cov-fa
 - One agent for writes. Fan out only for read-only work.
 - Small PRs, one intent. Title: `type(scope): summary`.
 - PR body: **What / Why / How verified (commands + output) / Numbers changed (before → after, with command) / Risks / Not done**.
-- The shell guard (`.cursor/hooks/guard-shell.sh`) **blocks `git pull --rebase`**. The `beforeShellExecution` matcher includes `git pull`, so a rebasing pull reaches the guard; a plain `git pull` is allowed. Any command containing `rebase` is denied, including `git rebase`. It also denies force-push, `reset --hard`, tags, and publishing, and a missing, blank, or non-string command. Invalid JSON exits non-zero (fail closed). `git push` and `curl`/`wget` ask first. Do not loosen this to make a task easier.
+- The shell guard (`.cursor/hooks/guard-shell.sh`) **blocks `git pull --rebase`**. The `beforeShellExecution` matcher includes `git pull`, so a rebasing pull reaches the guard; a plain `git pull` is allowed. Any command containing `rebase` is denied, including `git rebase`. It also denies force-push and `reset --hard` even when the flag is not next to the subcommand (`git push origin --force`, `git push origin -f`, `git reset HEAD --hard`), plus tags, publishing, and a missing, blank, or non-string command. Invalid JSON exits non-zero (fail closed). `git push` and `curl`/`wget` ask first. Do not loosen this to make a task easier.
 - When you learn something durable, propose an edit to this file or a skill in the same PR.
 
 ## Directory map

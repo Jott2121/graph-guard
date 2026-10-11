@@ -18,6 +18,14 @@ ask()  { python3 -c 'import json,sys; print(json.dumps({"permission":"ask","user
 if [ -z "${cmd//[[:space:]]/}" ]; then
   deny "Missing or empty command blocked by repo policy."
 fi
+# Flags may follow other arguments (`git push origin --force`, `git push origin -f`,
+# `git reset HEAD --hard`). Patterns that require the flag beside the subcommand miss those.
+if [[ "$cmd" == *"git push"* && ( "$cmd" == *"--force"* || "$cmd" =~ (^|[[:space:]])-f([[:space:]]|$) ) ]]; then
+  deny "Force-push blocked by repo policy."
+fi
+if [[ "$cmd" == *"reset"* && "$cmd" == *"--hard"* ]]; then
+  deny "History rewrite blocked by repo policy."
+fi
 case "$cmd" in
   *"push --force"*|*"push -f"*|*"--force-with-lease"*) deny "Force-push blocked by repo policy." ;;
   *"reset --hard"*|*"rebase"*)                        deny "History rewrite blocked by repo policy." ;;
