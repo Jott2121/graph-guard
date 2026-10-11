@@ -6,7 +6,7 @@ Flag as **blocking**:
 2. Lowered thresholds: `--cov-fail-under` (floor is 90), mutation score floors, or retry/timeout bounds removed.
 3. Tests that were deleted, skipped, xfailed, or had assertions weakened without a stated reason in the PR body. The only allowed default skip is the opt-in Fuseki live test.
 4. README or docs numbers that changed without a reproducing command or artifact in the PR, or a `scripts/check_receipts.py` update in the same PR. Restating the structure-derived +14%/+26% figures as the headline, or calling them an upper bound, is a blocking claim error.
-5. Any content that looks like employer or corporate data: company names (Lockheed, LM, LMCO), internal acronyms, CUI/ITAR markings, real-looking employee records, internal URLs. This repo is personal work only. The README author byline does not name an employer; do not add one.
+5. Any content that looks like employer or corporate data: anything from any employer's systems, workforce data, internal URLs, or proprietary/export-controlled material (CUI/ITAR markings), plus real employer names, internal acronyms, and real-looking employee records. Employer names are matched via the `EMPLOYER_MARKERS` secret and must never be written into a file, comment, test, or scanner pattern. This repo is personal work only. The README author byline does not name an employer; do not add one.
 6. A freshness check that treats the KG as fresh whenever `edges != 0`. Rebuild is keyed on `corpus_fingerprint`.
 7. Secrets, tokens, `.env` files, `.coverage`, or absolute personal paths committed.
 8. Unpinned GitHub Actions (must be full SHA) or widened workflow `permissions:`.

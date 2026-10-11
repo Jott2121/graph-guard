@@ -60,19 +60,38 @@ jobs:
 
   no-employer-data:
     runs-on: ubuntu-latest
+    env:
+      # Employer names are never written in the repo; they live in this secret as a
+      # case-insensitive extended regex (newlines separate alternatives). When it is
+      # empty (e.g. fork PRs), only the generic export-control patterns run.
+      EMPLOYER_MARKERS: ${{ secrets.EMPLOYER_MARKERS }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       # The README author byline and pyproject authors do not name an employer,
       # so README.md stays in the scan. Excluding it would hide a later slip.
-      # AGENTS.md and .cursor/ name the banned terms in policy text; .github/
+      # AGENTS.md and .cursor/ name the generic markers in policy text; .github/
       # contains this pattern itself.
       - name: Block employer / export-control markers and committed build junk
         run: |
+          pattern='\bCUI\b|ITAR|EXPORT CONTROLLED|PROPRIETARY'
+          markers=""
+          while IFS= read -r line || [ -n "$line" ]; do
+            line="$(printf '%s' "$line" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')"
+            if [ -n "$line" ]; then markers="${markers:+$markers|}$line"; fi
+          done <<< "${EMPLOYER_MARKERS:-}"
+          if [ -n "$markers" ]; then
+            # A pattern that matches an empty line (`a||b`, a lone `|`) matches everything.
+            if printf '\n' | grep -Eq -- "$markers"; then
+              echo "EMPLOYER_MARKERS matches an empty line; fix the secret" >&2
+              exit 1
+            fi
+            pattern="$markers|$pattern"
+          fi
           # bash -e does not abort on a failing `!` command, so `! git grep`
           # stays green when a banned term is present. Branch on git's own
           # exit codes instead: 0 = hit (fail), 1 = clean, anything else = fail.
           status=0
-          git grep -nIiE 'lockheed|\blmco\b|\bCUI\b|ITAR|EXPORT CONTROLLED|PROPRIETARY' -- . ':!.cursor' ':!AGENTS.md' ':!.github' || status=$?
+          git grep -nIiE -e "$pattern" -- . ':!.cursor' ':!AGENTS.md' ':!.github' || status=$?
           if [ "$status" -eq 0 ]; then
             echo "employer or export-control marker found" >&2
             exit 1
