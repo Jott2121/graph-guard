@@ -100,6 +100,9 @@ def test_plain_pull_is_allowed_and_rebasing_pull_is_denied():
     assert _run_guard("git pull")["permission"] == "allow"
     assert _run_guard("git pull origin main")["permission"] == "allow"
     assert _run_guard("git pull --rebase origin main")["permission"] == "deny"
+    assert _run_guard("git pull -r")["permission"] == "deny"
+    assert _run_guard("git pull origin -r")["permission"] == "deny"
+    assert _run_guard("git pull -ur origin")["permission"] == "deny"
 
 
 def test_missing_blank_and_non_string_commands_are_denied():
@@ -146,6 +149,8 @@ def test_rewrite_flags_are_denied_away_from_the_subcommand():
         "git push origin -f",
         "git push -u origin --force",
         "git push origin --force-with-lease",
+        "git push origin -uf",
+        "git push -fu origin",
         "git reset HEAD --hard",
         "git reset --hard HEAD",
     )

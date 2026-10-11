@@ -18,10 +18,16 @@ ask()  { python3 -c 'import json,sys; print(json.dumps({"permission":"ask","user
 if [ -z "${cmd//[[:space:]]/}" ]; then
   deny "Missing or empty command blocked by repo policy."
 fi
-# Flags may follow other arguments (`git push origin --force`, `git push origin -f`,
-# `git reset HEAD --hard`). Patterns that require the flag beside the subcommand miss those.
-if [[ "$cmd" == *"git push"* && ( "$cmd" == *"--force"* || "$cmd" =~ (^|[[:space:]])-f([[:space:]]|$) ) ]]; then
+# Flags may follow other arguments, and short options may be clustered.
+# `git push origin --force`, `git push origin -uf`, and `git reset HEAD --hard`
+# must all deny. `git pull -r` is a rebase; the substring `rebase` does not see it.
+# A plain `git pull` and `git push -u` (no f) stay allowed / ask.
+_short='(^|[[:space:]])-[A-Za-z]*'
+if [[ "$cmd" == *"git push"* && ( "$cmd" == *"--force"* || "$cmd" =~ ${_short}f[A-Za-z]*([[:space:]]|$) ) ]]; then
   deny "Force-push blocked by repo policy."
+fi
+if [[ "$cmd" == *"git pull"* && ( "$cmd" == *"rebase"* || "$cmd" =~ ${_short}r[A-Za-z]*([[:space:]]|$) ) ]]; then
+  deny "History rewrite blocked by repo policy."
 fi
 if [[ "$cmd" == *"reset"* && "$cmd" == *"--hard"* ]]; then
   deny "History rewrite blocked by repo policy."
